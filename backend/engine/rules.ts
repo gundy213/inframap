@@ -43,7 +43,8 @@ export const recommendationRules: RecommendationRule[] = [
     description: 'Apply bonus for Kubernetes when multiple high-complexity indicators are present',
     condition: (scores) => {
       // This would be checked based on specific question responses in a real implementation
-      return scores.Kubernetes > scores['Azure Container Apps'] + 3;
+      // If Kubernetes score notably outperforms managed container platforms
+      return scores.Kubernetes > (scores['Azure Container Apps'] + scores['AWS ECS/Fargate'] + scores['GCP Cloud Run']) / 3 + 2;
     },
     action: (results) => {
       const kubernetesResult = results.find(r => r.architecture === 'Kubernetes');
@@ -59,7 +60,8 @@ export const recommendationRules: RecommendationRule[] = [
     name: 'Serverless Cost Efficiency',
     description: 'Boost serverless when cost sensitivity is high and traffic is variable',
     condition: (scores) => {
-      return scores.Serverless > scores['Azure App Services'] + 2;
+      // Boost serverless when it clearly outperforms managed PaaS offerings
+      return scores.Serverless > (scores['Azure App Services'] + scores['AWS Elastic Beanstalk'] + scores['GCP App Engine']) / 3 + 2;
     },
     action: (results) => {
       const serverlessResult = results.find(r => r.architecture === 'Serverless');
@@ -117,14 +119,14 @@ export const compatibilityRules = {
    */
   isSuitableFor: (architecture: ArchitectureType, useCase: string): boolean => {
     const suitabilityMap: Record<string, ArchitectureType[]> = {
-      'high-traffic-web-app': ['Kubernetes', 'Azure Container Apps', 'Azure App Services'],
-      'microservices': ['Kubernetes', 'Azure Container Apps'],
-      'api-backend': ['Azure App Services', 'Serverless', 'Azure Container Apps'],
-      'event-driven': ['Serverless', 'Azure Container Apps'],
-      'legacy-app': ['Virtual Machines', 'Azure App Services'],
-      'data-processing': ['Kubernetes', 'Virtual Machines', 'Azure Container Apps'],
-      'real-time-processing': ['Kubernetes', 'Azure Container Apps'],
-      'static-website': ['Azure App Services', 'Serverless']
+      'high-traffic-web-app': ['Kubernetes', 'Azure Container Apps', 'Azure App Services', 'AWS ECS/Fargate', 'GCP Cloud Run'],
+      'microservices': ['Kubernetes', 'Azure Container Apps', 'AWS ECS/Fargate', 'GCP Cloud Run'],
+      'api-backend': ['Azure App Services', 'Serverless', 'Azure Container Apps', 'AWS Elastic Beanstalk', 'AWS Lambda', 'GCP App Engine', 'GCP Cloud Functions'],
+      'event-driven': ['Serverless', 'Azure Container Apps', 'AWS Lambda', 'GCP Cloud Functions', 'AWS ECS/Fargate', 'GCP Cloud Run'],
+      'legacy-app': ['Virtual Machines', 'Azure App Services', 'AWS EC2', 'GCP Compute Engine'],
+      'data-processing': ['Kubernetes', 'Virtual Machines', 'Azure Container Apps', 'AWS ECS/Fargate', 'GCP Cloud Run'],
+      'real-time-processing': ['Kubernetes', 'Azure Container Apps', 'AWS ECS/Fargate', 'GCP Cloud Run'],
+      'static-website': ['Azure App Services', 'Serverless', 'GCP App Engine']
     };
 
     return suitabilityMap[useCase]?.includes(architecture) ?? true;
@@ -135,7 +137,7 @@ export const compatibilityRules = {
    */
   getRecommendationsForUseCase: (useCase: string): ArchitectureType[] => {
     return compatibilityRules.isSuitableFor('Kubernetes', useCase) ?
-      ['Kubernetes', 'Azure Container Apps', 'Azure App Services', 'Serverless', 'Virtual Machines'] :
+      ['Kubernetes', 'AWS EKS', 'GCP GKE', 'Azure Container Apps', 'Azure App Services', 'AWS ECS/Fargate', 'GCP Cloud Run', 'Serverless', 'Virtual Machines'] :
       [];
   }
 };
@@ -153,7 +155,17 @@ export const costRules = {
       'Azure App Services': 'Low',
       'Azure Container Apps': 'Medium',
       'Virtual Machines': 'High',
-      Kubernetes: 'High'
+      Kubernetes: 'High',
+      'AWS Elastic Beanstalk': 'Low',
+      'AWS ECS/Fargate': 'Medium',
+      'AWS Lambda': 'Low',
+      'AWS EC2': 'High',
+      'AWS EKS': 'High',
+      'GCP App Engine': 'Low',
+      'GCP Cloud Run': 'Medium',
+      'GCP Cloud Functions': 'Low',
+      'GCP Compute Engine': 'High',
+      'GCP GKE': 'High'
     };
 
     return costTiers[architecture];
@@ -168,7 +180,17 @@ export const costRules = {
       'Azure App Services': 8,
       'Azure Container Apps': 7,
       Kubernetes: 5,
-      'Virtual Machines': 4
+      'Virtual Machines': 4,
+      'AWS Lambda': 9,
+      'AWS Elastic Beanstalk': 8,
+      'AWS ECS/Fargate': 7,
+      'AWS EC2': 4,
+      'AWS EKS': 5,
+      'GCP Cloud Functions': 9,
+      'GCP App Engine': 8,
+      'GCP Cloud Run': 7,
+      'GCP Compute Engine': 4,
+      'GCP GKE': 5
     };
 
     return efficiencyScores[architecture];
