@@ -61,10 +61,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build backend image
+      - name: Build backend image (context=repo root so shared/ is included)
         uses: docker/build-push-action@v4
         with:
-          context: ./backend
+          context: .
           file: ./backend/Dockerfile
           push: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
           tags: |
