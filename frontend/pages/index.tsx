@@ -123,6 +123,78 @@ const sampleQuestions: Question[] = [
         text: 'Infrastructure experts - comfortable with complex setups'
       }
     ]
+  },
+  {
+    id: 'provider-preference',
+    text: 'Do you have a preferred cloud provider?',
+    type: 'multiple-choice',
+    category: 'Provider',
+    options: [
+      {
+        id: 'prefer-azure',
+        text: 'Prefer Azure'
+      },
+      {
+        id: 'prefer-aws',
+        text: 'Prefer AWS'
+      },
+      {
+        id: 'prefer-gcp',
+        text: 'Prefer GCP'
+      },
+      {
+        id: 'no-preference',
+        text: 'No strong preference'
+      }
+    ]
+  },
+  {
+    id: 'stateful-needs',
+    text: 'Will you run stateful services or databases alongside your app?',
+    type: 'multiple-choice',
+    category: 'Data',
+    options: [
+      {
+        id: 'yes-stateful',
+        text: 'Yes, stateful services/databases'
+      },
+      {
+        id: 'no-stateful',
+        text: 'No, mostly stateless services'
+      }
+    ]
+  },
+  {
+    id: 'multi-region',
+    text: 'Do you require multi-region deployment or low-latency global presence?',
+    type: 'multiple-choice',
+    category: 'Scalability',
+    options: [
+      {
+        id: 'multi-region-yes',
+        text: 'Yes, global presence required'
+      },
+      {
+        id: 'multi-region-no',
+        text: 'No, single-region is fine'
+      }
+    ]
+  },
+  {
+    id: 'compliance',
+    text: 'Do you have strict regulatory or compliance requirements?',
+    type: 'multiple-choice',
+    category: 'Security',
+    options: [
+      {
+        id: 'strict-compliance',
+        text: 'Yes, strict compliance required'
+      },
+      {
+        id: 'standard-compliance',
+        text: 'Standard compliance only'
+      }
+    ]
   }
 ];
 
@@ -185,7 +257,7 @@ const Questionnaire: React.FC = () => {
     setError(null);
 
     try {
-      const response = await fetch('/api/recommend', {
+      const response = await fetch('http://localhost:3001/api/recommend', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
