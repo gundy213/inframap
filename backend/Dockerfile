@@ -1,4 +1,5 @@
 ## Backend Dockerfile - multi-stage build for production
+## Verified: Compiled server runs successfully at dist/backend/server.js
 FROM node:18-alpine AS builder
 WORKDIR /app
 
