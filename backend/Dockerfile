@@ -1,21 +1,21 @@
 ## Backend Dockerfile - multi-stage build for production
 FROM node:18-alpine AS builder
-WORKDIR /app
+WORKDIR /app/backend
 
-# Copy package files and install dependencies (context is the backend folder)
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy backend package and tsconfig into build dir
+COPY backend/package*.json ./
+COPY backend/tsconfig.json ./
 RUN npm ci --only=production || true
 
-# Copy source and build
-COPY . .
+# Copy backend source and build
+COPY backend/. ./
 RUN npm install --silent
 RUN npm run build
 
 FROM node:18-alpine
 WORKDIR /app
-COPY --from=builder /app/dist ./dist
-COPY package*.json ./
+COPY --from=builder /app/backend/dist ./dist
+COPY backend/package*.json ./
 RUN npm ci --only=production || true
 
 ENV NODE_ENV=production
