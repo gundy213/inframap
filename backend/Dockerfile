@@ -2,23 +2,23 @@
 FROM node:18-alpine AS builder
 WORKDIR /app
 
-# Copy shared and backend so relative imports (../../shared) resolve correctly
-COPY shared ./shared
+# Copy entire workspace structure
+COPY package*.json ./
 COPY backend ./backend
+COPY shared ./shared
 
-# Install backend dependencies
-WORKDIR /app/backend
+# Install dependencies at root (workspace)
 RUN npm install --silent
 
-# Build backend from repo root to ensure proper workspace context
-WORKDIR /app
+# Build backend (outputs to backend/dist)
 RUN npm run build --prefix ./backend
 
+# Runtime stage
 FROM node:18-alpine
 WORKDIR /app
+# Copy compiled backend and dependencies
 COPY --from=builder /app/backend/dist ./dist
-COPY backend/package*.json ./
-RUN npm install --omit=dev --silent || true
+COPY --from=builder /app/backend/node_modules ./node_modules
 
 ENV NODE_ENV=production
 EXPOSE 3001
