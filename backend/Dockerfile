@@ -16,9 +16,9 @@ RUN npm run build --prefix ./backend
 # Runtime stage
 FROM node:18-alpine
 WORKDIR /app
-# Copy compiled backend and dependencies
+# Copy compiled backend and root workspace node_modules
 COPY --from=builder /app/backend/dist ./dist
-COPY --from=builder /app/backend/node_modules ./node_modules
+COPY --from=builder /app/node_modules ./node_modules
 
 ENV NODE_ENV=production
 EXPOSE 3001
