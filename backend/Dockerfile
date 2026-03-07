@@ -6,16 +6,19 @@ WORKDIR /app
 COPY shared ./shared
 COPY backend ./backend
 
-# Install and build backend
+# Install backend dependencies
 WORKDIR /app/backend
 RUN npm install --silent
-RUN npm run build
+
+# Build backend from repo root to ensure proper workspace context
+WORKDIR /app
+RUN npm run build --prefix ./backend
 
 FROM node:18-alpine
 WORKDIR /app
 COPY --from=builder /app/backend/dist ./dist
 COPY backend/package*.json ./
-RUN npm install --only=production || true
+RUN npm install --omit=dev --silent || true
 
 ENV NODE_ENV=production
 EXPOSE 3001
