@@ -66,10 +66,10 @@ jobs:
         with:
           context: .
           file: ./backend/Dockerfile
-          push: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+          push: false
           tags: |
-            ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:latest
             infra-recommender-backend:${{ github.sha }}
+            infra-recommender-backend:latest
           load: true
 
       - name: Build frontend image
@@ -77,24 +77,37 @@ jobs:
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
-          push: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+          push: false
           tags: |
-            ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:latest
             infra-recommender-frontend:${{ github.sha }}
+            infra-recommender-frontend:latest
           load: true
 
-      - name: Save backend image as artifact (no push)
-        if: ${{ env.DOCKERHUB_USERNAME == '' || env.DOCKERHUB_TOKEN == '' }}
+      - name: Tag and push backend to Docker Hub (if credentials available)
+        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         run: |
-          docker save infra-recommender-backend:${{ github.sha }} -o backend-image.tar || docker save ${{ secrets.DOCKERHUB_USERNAME }}/infra-recommender-backend:latest -o backend-image.tar
+          docker tag infra-recommender-backend:${{ github.sha }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:latest
+          docker tag infra-recommender-backend:${{ github.sha }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:${{ github.sha }}
+          docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:latest
+          docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:${{ github.sha }}
 
-      - name: Save frontend image as artifact (no push)
-        if: ${{ env.DOCKERHUB_USERNAME == '' || env.DOCKERHUB_TOKEN == '' }}
+      - name: Tag and push frontend to Docker Hub (if credentials available)
+        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         run: |
-          docker save infra-recommender-frontend:${{ github.sha }} -o frontend-image.tar || docker save ${{ secrets.DOCKERHUB_USERNAME }}/infra-recommender-frontend:latest -o frontend-image.tar
+          docker tag infra-recommender-frontend:${{ github.sha }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:latest
+          docker tag infra-recommender-frontend:${{ github.sha }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:${{ github.sha }}
+          docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:latest
+          docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:${{ github.sha }}
 
-      - name: Upload images as artifacts (when not pushing)
-        if: ${{ env.DOCKERHUB_USERNAME == '' || env.DOCKERHUB_TOKEN == '' }}
+      - name: Save backend image as artifact
+        run: |
+          docker save infra-recommender-backend:${{ github.sha }} -o backend-image.tar
+
+      - name: Save frontend image as artifact
+        run: |
+          docker save infra-recommender-frontend:${{ github.sha }} -o frontend-image.tar
+
+      - name: Upload images as artifacts
         uses: actions/upload-artifact@v4
         with:
           name: docker-images
