@@ -4,7 +4,19 @@ export type ArchitectureType =
   | 'Azure App Services'
   | 'Azure Container Apps'
   | 'Serverless'
-  | 'Virtual Machines';
+  | 'Virtual Machines'
+  // AWS offerings
+  | 'AWS Elastic Beanstalk'
+  | 'AWS ECS/Fargate'
+  | 'AWS Lambda'
+  | 'AWS EC2'
+  | 'AWS EKS'
+  // GCP offerings
+  | 'GCP App Engine'
+  | 'GCP Cloud Run'
+  | 'GCP Cloud Functions'
+  | 'GCP Compute Engine'
+  | 'GCP GKE';
 
 // Scoring weights for each architecture type
 export interface ArchitectureScores {
@@ -13,6 +25,16 @@ export interface ArchitectureScores {
   'Azure Container Apps': number;
   Serverless: number;
   'Virtual Machines': number;
+  'AWS Elastic Beanstalk': number;
+  'AWS ECS/Fargate': number;
+  'AWS Lambda': number;
+  'AWS EC2': number;
+  'AWS EKS': number;
+  'GCP App Engine': number;
+  'GCP Cloud Run': number;
+  'GCP Cloud Functions': number;
+  'GCP Compute Engine': number;
+  'GCP GKE': number;
 }
 
 // Answer option for multiple choice questions

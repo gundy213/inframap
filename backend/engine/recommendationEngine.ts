@@ -195,6 +195,76 @@ export class RecommendationEngine {
           reasoning.push('Your need for complete infrastructure control and flexibility aligns with traditional VM deployments.');
         }
         break;
+
+      case 'AWS EC2':
+        reasoning.push('AWS EC2 gives you raw virtual machine instances with full control over compute and networking on AWS.');
+        if (this.hasFullControlAnswers(questionBreakdown)) {
+          reasoning.push('Your requirement for custom OS-level configuration and persistent compute matches EC2 well.');
+        }
+        break;
+
+      case 'AWS Lambda':
+        reasoning.push('AWS Lambda is a serverless compute option ideal for short-lived, event-driven workloads on AWS.');
+        if (this.hasVariableTrafficAnswers(questionBreakdown)) {
+          reasoning.push('Your variable traffic patterns and cost sensitivity suggest Lambda could reduce operational costs.');
+        }
+        break;
+
+      case 'AWS ECS/Fargate':
+        reasoning.push('AWS ECS with Fargate provides container execution without managing servers, integrating well with AWS services.');
+        if (this.hasContainerPreference(questionBreakdown)) {
+          reasoning.push('Containers with minimal ops overhead align well with ECS/Fargate.');
+        }
+        break;
+
+      case 'AWS Elastic Beanstalk':
+        reasoning.push('Elastic Beanstalk is a managed platform for deploying web apps with minimal infrastructure management on AWS.');
+        if (this.hasSimpleAppAnswers(questionBreakdown)) {
+          reasoning.push('This matches simple web app deployments where rapid time-to-market matters.');
+        }
+        break;
+
+      case 'AWS EKS':
+        reasoning.push('AWS EKS is managed Kubernetes on AWS for advanced orchestration and scaling needs.');
+        if (this.hasHighComplexityAnswers(questionBreakdown)) {
+          reasoning.push('Complex microservices and advanced operational requirements make EKS a strong candidate.');
+        }
+        break;
+
+      case 'GCP Compute Engine':
+        reasoning.push('GCP Compute Engine provides virtual machines with full customization and control on GCP.');
+        if (this.hasFullControlAnswers(questionBreakdown)) {
+          reasoning.push('Your need for VM-level control and legacy support aligns with Compute Engine.');
+        }
+        break;
+
+      case 'GCP Cloud Functions':
+        reasoning.push('GCP Cloud Functions are event-driven serverless functions suitable for lightweight integrations and automation.');
+        if (this.hasVariableTrafficAnswers(questionBreakdown)) {
+          reasoning.push('Functions can be cost-effective for sporadic workloads and event-driven flows.');
+        }
+        break;
+
+      case 'GCP Cloud Run':
+        reasoning.push('GCP Cloud Run runs stateless containers with serverless scaling on GCP.');
+        if (this.hasContainerPreference(questionBreakdown)) {
+          reasoning.push('Stateless containers and pay-per-use scaling fit Cloud Run well.');
+        }
+        break;
+
+      case 'GCP App Engine':
+        reasoning.push('GCP App Engine is a fully managed platform for web apps with minimal operational overhead on GCP.');
+        if (this.hasSimpleAppAnswers(questionBreakdown)) {
+          reasoning.push('App Engine suits opinionated web apps where rapid deployment is desired.');
+        }
+        break;
+
+      case 'GCP GKE':
+        reasoning.push('GCP GKE is managed Kubernetes for container orchestration and scaling on GCP.');
+        if (this.hasHighComplexityAnswers(questionBreakdown)) {
+          reasoning.push('GKE is appropriate when you need advanced orchestration paired with GCP services.');
+        }
+        break;
     }
 
     return reasoning;
@@ -264,11 +334,21 @@ export class RecommendationEngine {
    */
   private getComplexityComparison(alt: ArchitectureType, primary: ArchitectureType): string | null {
     const complexityLevels: Record<ArchitectureType, number> = {
-      'Virtual Machines': 5, // Most complex to manage
+      'Virtual Machines': 5,
       Kubernetes: 4,
       'Azure Container Apps': 2,
       'Azure App Services': 1,
-      Serverless: 1 // Least complex
+      Serverless: 1,
+      'AWS Elastic Beanstalk': 1,
+      'AWS ECS/Fargate': 2,
+      'AWS Lambda': 1,
+      'AWS EC2': 5,
+      'AWS EKS': 4,
+      'GCP App Engine': 1,
+      'GCP Cloud Run': 2,
+      'GCP Cloud Functions': 1,
+      'GCP Compute Engine': 5,
+      'GCP GKE': 4
     };
 
     const altComplexity = complexityLevels[alt];
@@ -307,6 +387,47 @@ export class RecommendationEngine {
       'Virtual Machines': [
         'Full control over infrastructure and software stack',
         'Best for legacy applications requiring specific configurations'
+      ]
+      ,
+      'AWS Elastic Beanstalk': [
+        'Managed platform for quick deployments on AWS',
+        'Good for teams that want minimal infrastructure management on AWS'
+      ],
+      'AWS ECS/Fargate': [
+        'Serverless containers with tight AWS integration',
+        'Good balance between control and operational simplicity'
+      ],
+      'AWS Lambda': [
+        'Excellent for event-driven workloads and integrations with AWS services',
+        'High cost efficiency for sporadic or bursty workloads'
+      ],
+      'AWS EC2': [
+        'Raw virtual machines for total control and customization',
+        'Suitable for legacy or specialized workloads needing OS-level access'
+      ],
+      'AWS EKS': [
+        'Managed Kubernetes on AWS with deep ecosystem integrations',
+        'Best when you need Kubernetes features and AWS services together'
+      ],
+      'GCP App Engine': [
+        'Fully managed platform for rapid application deployment on GCP',
+        'Great for opinionated web apps with minimal ops overhead'
+      ],
+      'GCP Cloud Run': [
+        'Serverless containers with automatic scaling on GCP',
+        'Good for stateless container workloads with pay-per-use billing'
+      ],
+      'GCP Cloud Functions': [
+        'Event-driven serverless functions integrated with GCP services',
+        'Excellent for lightweight integrations and automation'
+      ],
+      'GCP Compute Engine': [
+        'Virtual machines with full control over machines on GCP',
+        'Best for custom infrastructure and legacy migrations'
+      ],
+      'GCP GKE': [
+        'Managed Kubernetes with strong networking and GCP integrations',
+        'Ideal for containerized microservices at scale on GCP'
       ]
     };
 

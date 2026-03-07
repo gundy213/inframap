@@ -31,7 +31,17 @@ export class ScoringEngine {
       'Azure App Services': 0,
       'Azure Container Apps': 0,
       Serverless: 0,
-      'Virtual Machines': 0
+      'Virtual Machines': 0,
+      'AWS Elastic Beanstalk': 0,
+      'AWS ECS/Fargate': 0,
+      'AWS Lambda': 0,
+      'AWS EC2': 0,
+      'AWS EKS': 0,
+      'GCP App Engine': 0,
+      'GCP Cloud Run': 0,
+      'GCP Cloud Functions': 0,
+      'GCP Compute Engine': 0,
+      'GCP GKE': 0
     };
 
     return responses.reduce((scores, response) => {
@@ -137,7 +147,17 @@ export const ScoringUtils = {
       'Azure App Services': 'Fully managed platform for web applications and APIs, offering simplicity and quick deployment.',
       'Azure Container Apps': 'Serverless container service that provides a Kubernetes-like experience without managing infrastructure.',
       Serverless: 'Event-driven computing model where you pay only for execution time, perfect for variable workloads.',
-      'Virtual Machines': 'Full control over your infrastructure with traditional virtual machine deployments.'
+      'Virtual Machines': 'Full control over your infrastructure with traditional virtual machine deployments.',
+      'AWS Elastic Beanstalk': 'Managed platform for deploying web applications on AWS with minimal infrastructure management.',
+      'AWS ECS/Fargate': 'Container service on AWS that offers serverless compute for containers with minimal orchestration overhead.',
+      'AWS Lambda': 'Event-driven serverless compute on AWS ideal for bursty or lightweight workloads.',
+      'AWS EC2': 'Raw virtual machine instances on AWS for full control over compute resources.',
+      'AWS EKS': 'Managed Kubernetes on AWS for complex container orchestration and scaling.',
+      'GCP App Engine': 'Fully managed platform for building scalable web applications on GCP.',
+      'GCP Cloud Run': 'Serverless containers on GCP for running stateless containers with automatic scaling.',
+      'GCP Cloud Functions': 'Event-driven serverless compute on GCP for lightweight functions and integrations.',
+      'GCP Compute Engine': 'Virtual machines on GCP offering full control over compute resources.',
+      'GCP GKE': 'Managed Kubernetes on GCP for container orchestration and advanced scaling.'
     };
 
     return descriptions[architecture];

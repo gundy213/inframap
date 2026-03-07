@@ -32,9 +32,13 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🔍 Questions API: http://localhost:${PORT}/api/recommend/questions`);
-  console.log(`🎯 Recommendations API: http://localhost:${PORT}/api/recommend`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`🔍 Questions API: http://localhost:${PORT}/api/recommend/questions`);
+    console.log(`🎯 Recommendations API: http://localhost:${PORT}/api/recommend`);
+  });
+}
+
+export default app;
