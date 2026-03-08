@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import { ProgressBar } from '../components/ProgressBar';
 import { QuestionCard, Question } from '../components/QuestionCard';
@@ -475,16 +475,33 @@ const Questionnaire: React.FC = () => {
   };
 
   const WhyNotModal: React.FC = () => {
+    useEffect(() => {
+      if (!whyNotAlt) return;
+
+      const onKeyDown = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') {
+          setWhyNotAlt(null);
+        }
+      };
+
+      window.addEventListener('keydown', onKeyDown);
+      return () => window.removeEventListener('keydown', onKeyDown);
+    }, [whyNotAlt]);
+
     if (!whyNotAlt) return null;
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setWhyNotAlt(null)}>
         <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" />
         <div
           className="relative bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8 border border-gray-100"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="why-not-title"
           onClick={e => e.stopPropagation()}
         >
           <button
             onClick={() => setWhyNotAlt(null)}
+            aria-label="Close details dialog"
             className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-lg transition-colors"
           >
             ×
@@ -499,7 +516,7 @@ const Questionnaire: React.FC = () => {
               )}
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Why not {whyNotAlt.architecture}?</h2>
+              <h2 id="why-not-title" className="text-2xl font-bold text-gray-900">Why not {whyNotAlt.architecture}?</h2>
               <p className="text-gray-500 text-sm">Fit score: {whyNotAlt.percentage}% vs {result?.topMatchPercentage}% for {result?.recommendation}</p>
             </div>
           </div>
@@ -572,10 +589,13 @@ const Questionnaire: React.FC = () => {
 
   if (result) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 py-6 md:py-12">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 py-6 md:py-12" aria-busy={isSubmitting || isAnalyzingSensitivity}>
+        <a href="#results-main" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-white text-purple-700 font-semibold px-4 py-2 rounded-lg shadow">
+          Skip to results
+        </a>
         <div className="max-w-6xl mx-auto px-4 md:px-6">
           {whyNotAlt && <WhyNotModal />}
-          <div className="bg-white rounded-2xl md:rounded-3xl shadow-xl md:shadow-2xl p-6 md:p-10 border border-gray-100">
+          <main id="results-main" className="bg-white rounded-2xl md:rounded-3xl shadow-xl md:shadow-2xl p-6 md:p-10 border border-gray-100">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent text-center mb-8">
               Your Infrastructure Recommendation
             </h1>
@@ -602,7 +622,7 @@ const Questionnaire: React.FC = () => {
                 <div className="flex flex-wrap justify-center gap-3">
                   <button
                     onClick={exportCurrentReport}
-                    className="px-4 py-2 rounded-xl bg-white border border-blue-200 text-blue-700 font-semibold hover:bg-blue-50 transition-colors"
+                    className="px-4 py-2 rounded-xl bg-white border border-blue-200 text-blue-700 font-semibold hover:bg-blue-50 transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
                   >
                     Export Report (.pdf)
                   </button>
@@ -711,7 +731,7 @@ const Questionnaire: React.FC = () => {
                           <td className="px-6 py-4">
                             <button
                               onClick={() => setWhyNotAlt(alt)}
-                              className="text-sm font-semibold text-purple-600 hover:text-purple-800 underline underline-offset-2 whitespace-nowrap transition-colors"
+                              className="text-sm font-semibold text-purple-600 hover:text-purple-800 underline underline-offset-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300 rounded"
                             >
                               Why not this?
                             </button>
@@ -802,7 +822,7 @@ const Questionnaire: React.FC = () => {
                       </div>
                       <button
                         onClick={() => setWhyNotAlt(alt)}
-                        className="w-full text-center text-sm font-semibold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 py-2 rounded-xl transition-colors"
+                        className="w-full text-center text-sm font-semibold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 py-2 rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300"
                       >
                         Why not this? →
                       </button>
@@ -816,7 +836,7 @@ const Questionnaire: React.FC = () => {
             <div className="mb-10">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Sensitivity Analysis</h3>
               {isAnalyzingSensitivity ? (
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-blue-800 font-medium">
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-blue-800 font-medium" role="status" aria-live="polite">
                   Evaluating "what if" answer changes...
                 </div>
               ) : sensitivity ? (
@@ -855,20 +875,24 @@ const Questionnaire: React.FC = () => {
                   setResponses([]);
                   setCurrentStep(1);
                 }}
-                className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl font-bold text-base md:text-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl font-bold text-base md:text-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-300 motion-reduce:transition-none shadow-lg hover:shadow-xl transform hover:scale-105 motion-reduce:hover:scale-100 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-purple-200"
               >
                 Take Questionnaire Again
               </button>
             </div>
-          </div>
+          </main>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 py-6 md:py-12">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 py-6 md:py-12" aria-busy={isSubmitting}>
+      <a href="#questionnaire-main" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-white text-purple-700 font-semibold px-4 py-2 rounded-lg shadow">
+        Skip to questionnaire
+      </a>
       <div className="max-w-4xl mx-auto px-4 md:px-6">
+        <main id="questionnaire-main">
         <div className="text-center mb-8 md:mb-12">
           <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-4">
             Infrastructure Recommendation
@@ -884,15 +908,17 @@ const Questionnaire: React.FC = () => {
           className="mb-10"
         />
 
-        <QuestionCard
-          question={currentQuestion}
-          selectedAnswerId={currentResponse?.selectedAnswerId}
-          onAnswerSelect={handleAnswerSelect}
-          className="mb-10"
-        />
+        <div id="question-card">
+          <QuestionCard
+            question={currentQuestion}
+            selectedAnswerId={currentResponse?.selectedAnswerId}
+            onAnswerSelect={handleAnswerSelect}
+            className="mb-10"
+          />
+        </div>
 
         {error && (
-          <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 mb-8">
+          <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 mb-8" role="alert" aria-live="assertive">
             <p className="text-red-800 font-semibold text-lg">{error}</p>
           </div>
         )}
@@ -901,10 +927,10 @@ const Questionnaire: React.FC = () => {
           <button
             onClick={handleBack}
             disabled={currentStep === 1}
-            className={`px-6 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl font-bold text-base md:text-lg transition-all duration-300 ${
+            className={`px-6 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl font-bold text-base md:text-lg transition-all duration-300 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gray-300 ${
               currentStep === 1
                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-gray-600 text-white hover:bg-gray-700 shadow-lg hover:shadow-xl transform hover:scale-105'
+                : 'bg-gray-600 text-white hover:bg-gray-700 shadow-lg hover:shadow-xl transform hover:scale-105 motion-reduce:hover:scale-100'
             }`}
           >
             Back
@@ -913,15 +939,18 @@ const Questionnaire: React.FC = () => {
           <button
             onClick={handleNext}
             disabled={!canProceed || isSubmitting}
-            className={`px-6 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl font-bold text-base md:text-lg transition-all duration-300 ${
+            className={`px-6 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl font-bold text-base md:text-lg transition-all duration-300 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-purple-200 ${
               !canProceed || isSubmitting
                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 shadow-lg hover:shadow-xl transform hover:scale-105'
+                : 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 shadow-lg hover:shadow-xl transform hover:scale-105 motion-reduce:hover:scale-100'
             }`}
+            aria-describedby="submit-status"
           >
             {isSubmitting ? 'Submitting...' : currentStep === totalSteps ? 'Get Recommendation' : 'Next'}
           </button>
         </div>
+        <p id="submit-status" className="sr-only" aria-live="polite">{isSubmitting ? 'Submitting answers and generating recommendation.' : ''}</p>
+        </main>
       </div>
     </div>
   );

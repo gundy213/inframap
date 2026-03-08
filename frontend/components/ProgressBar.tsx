@@ -23,9 +23,16 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
           {Math.round(progressPercentage)}% Complete
         </span>
       </div>
-      <div className="w-full bg-gray-100 rounded-full h-3 shadow-inner">
+      <div
+        className="w-full bg-gray-100 rounded-full h-3 shadow-inner"
+        role="progressbar"
+        aria-label="Questionnaire progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progressPercentage)}
+      >
         <div
-          className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full transition-all duration-500 ease-out shadow-sm"
+          className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full transition-all duration-500 motion-reduce:transition-none ease-out shadow-sm"
           style={{ width: `${progressPercentage}%` }}
         />
       </div>
