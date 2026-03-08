@@ -1,9 +1,9 @@
 ## Frontend Dockerfile - build with Node and serve using nginx
 FROM node:18-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
+COPY frontend/package*.json ./
 RUN npm install --silent
-COPY . .
+COPY frontend/ .
 RUN npm run build
 
 FROM nginx:stable-alpine

@@ -43,10 +43,27 @@ export class RecommendationEngine {
     const rawScores = detailedScoring.totalScores;
 
     // Apply business rules
-    const ruleAdjustedResults = this.ruleEngine.applyRules(rawScores, detailedScoring.recommendation.scores);
+    const ruleAdjustedRaw = this.ruleEngine.applyRules(rawScores, detailedScoring.recommendation.scores);
+
+    // Recalculate percentages relative to the post-rule winner (rules change scores but not percentages)
+    const postRuleTop = ruleAdjustedRaw.length > 0 ? ruleAdjustedRaw[0].score : 1;
+    const ruleAdjustedResults = ruleAdjustedRaw.map(r => ({
+      ...r,
+      percentage: postRuleTop > 0 ? Math.max(0, Math.round((r.score / postRuleTop) * 100)) : 0
+    }));
+
+    // Compute consistency: fraction of questions where the winner scored highest
+    const topArch = ruleAdjustedResults[0].architecture;
+    const consistencyFactor = detailedScoring.questionBreakdown.length > 0
+      ? (detailedScoring.questionBreakdown.filter(q => {
+          const values = Object.values(q.scores) as number[];
+          const maxForQuestion = values.length > 0 ? Math.max(...values) : 0;
+          return maxForQuestion > 0 && (q.scores[topArch as ArchitectureType] ?? 0) >= maxForQuestion;
+        }).length / detailedScoring.questionBreakdown.length) * 100
+      : 50;
 
     // Calculate confidence score
-    const confidenceScore = this.calculateConfidenceScore(ruleAdjustedResults, responses.length);
+    const confidenceScore = this.calculateConfidenceScore(ruleAdjustedResults, responses.length, consistencyFactor);
     const confidenceLevel = this.getConfidenceLevel(confidenceScore);
 
     // Generate reasoning
@@ -68,34 +85,38 @@ export class RecommendationEngine {
    * Calculate confidence score based on score distribution and response completeness
    * Uses a weighted average approach instead of multiplication for higher, more meaningful scores
    */
-  private calculateConfidenceScore(results: ScoringResult[], totalQuestions: number): number {
+  private calculateConfidenceScore(results: ScoringResult[], totalQuestions: number, consistencyFactor: number = 50): number {
     if (results.length === 0) return 0;
 
     const topScore = results[0].score;
     const secondScore = results.length > 1 ? results[1].score : 0;
-    const totalScore = results.reduce((sum, result) => sum + result.score, 0);
-    const maxPossibleScore = totalQuestions * 4; // Max 4 points per question
 
-    if (totalScore === 0) return 0;
+    // If the top score is zero or negative there's no meaningful recommendation
+    if (topScore <= 0) return 35;
 
-    // 1. Raw score quality: How good is the top score as % of max possible? (40% weight)
-    const topScoreQuality = Math.min((topScore / maxPossibleScore) * 100, 100);
+    // 1. Absolute strength: top score vs a "very good fit" benchmark of 3 pts/question (30% weight)
+    const goodBenchmark = totalQuestions * 3;
+    const absoluteStrength = Math.min((topScore / goodBenchmark) * 100, 100);
 
-    // 2. Question completeness: More questions answered = higher confidence (25% weight)
-    const questionFactor = Math.min((totalQuestions / 10) * 100, 100); // 10 questions normalize to 100
+    // 2. Score dominance: gap to runner-up, 2x-amplified so small gaps register clearly (40% weight)
+    const scoreDominance = secondScore < topScore
+      ? Math.min(((topScore - secondScore) / topScore) * 200, 100)
+      : 0;
 
-    // 3. Score dominance: How differentiated is the winner? (35% weight)
-    // Calculate gap as percentage (max 100 when there's clear separation)
-    const scoreDominance = secondScore > 0 ? ((topScore - secondScore) / topScore) * 100 : 100;
-    const dominanceFactor = Math.min(scoreDominance, 100);
+    // 3. Answer consistency: % of questions that "voted" for the winner (20% weight)
+    const consistency = Math.min(consistencyFactor, 100);
 
-    // Weighted average instead of multiplication
-    let confidence = (topScoreQuality * 0.4) + (questionFactor * 0.25) + (dominanceFactor * 0.35);
+    // 4. Question completeness (10% weight)
+    const questionFactor = Math.min((totalQuestions / 10) * 100, 100);
 
-    // Apply minimum floor - at least 45% for valid recommendations
-    confidence = Math.max(confidence, 45);
+    let confidence =
+      (absoluteStrength * 0.30) +
+      (scoreDominance * 0.40) +
+      (consistency * 0.20) +
+      (questionFactor * 0.10);
 
-    // Cap at 100
+    // Lower floor (35) so weak signals produce genuine "Low" ratings
+    confidence = Math.max(confidence, 35);
     confidence = Math.min(confidence, 100);
 
     return Math.round(confidence);
@@ -105,9 +126,9 @@ export class RecommendationEngine {
    * Convert confidence score to confidence level
    */
   private getConfidenceLevel(confidenceScore: number): 'Low' | 'Medium' | 'High' {
-    if (confidenceScore >= 70) {
+    if (confidenceScore >= 65) {
       return 'High';
-    } else if (confidenceScore >= 55) {
+    } else if (confidenceScore >= 48) {
       return 'Medium';
     } else {
       return 'Low';
@@ -322,8 +343,8 @@ export class RecommendationEngine {
     complexity: 'Low' | 'Medium' | 'High';
     estimatedCost: string;
   }> {
-    // Return top 2-3 alternatives (excluding the primary recommendation)
-    return results.slice(1, 4).map(result => ({
+    // Return top 4 architectures including the winner as the first entry (percentage: 100)
+    return results.slice(0, 4).map(result => ({
       architecture: result.architecture,
       score: result.score,
       percentage: result.percentage,
