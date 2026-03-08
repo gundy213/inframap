@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { jsPDF } from 'jspdf';
 import { ProgressBar } from '../components/ProgressBar';
 import { QuestionCard, Question } from '../components/QuestionCard';
 
@@ -232,6 +233,31 @@ interface WhyNotAlt {
   estimatedCost: string;
 }
 
+interface SensitivityChange {
+  questionId: string;
+  questionText: string;
+  currentAnswerId: string;
+  currentAnswerText: string;
+  newAnswerId: string;
+  newAnswerText: string;
+  newRecommendation: string;
+  newTopMatchPercentage: number;
+  newConfidenceScore: number;
+  newConfidenceLevel: 'Low' | 'Medium' | 'High';
+  changesRecommendation: boolean;
+  fitDelta: number;
+  certaintyDelta: number;
+}
+
+interface SensitivityAnalysisResult {
+  baseRecommendation: string;
+  baseTopMatchPercentage: number;
+  baseConfidenceScore: number;
+  totalVariationsTested: number;
+  recommendationSwitches: number;
+  changes: SensitivityChange[];
+}
+
 const Questionnaire: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [responses, setResponses] = useState<QuestionnaireResponse[]>([]);
@@ -239,10 +265,89 @@ const Questionnaire: React.FC = () => {
   const [result, setResult] = useState<RecommendationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [whyNotAlt, setWhyNotAlt] = useState<WhyNotAlt | null>(null);
+  const [sensitivity, setSensitivity] = useState<SensitivityAnalysisResult | null>(null);
+  const [isAnalyzingSensitivity, setIsAnalyzingSensitivity] = useState(false);
 
   const totalSteps = sampleQuestions.length;
   const currentQuestion = sampleQuestions[currentStep - 1];
   const currentResponse = responses.find(r => r.questionId === currentQuestion?.id);
+
+  const answerText = (questionId: string, answerId: string): string => {
+    const question = sampleQuestions.find(q => q.id === questionId);
+    const option = question?.options.find(o => o.id === answerId);
+    return option?.text ?? answerId;
+  };
+
+  const buildReportPdf = (scenarioResult: RecommendationResult, scenarioResponses: QuestionnaireResponse[]) => {
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const margin = 40;
+    const maxWidth = pageWidth - (margin * 2);
+    let y = 48;
+
+    const addLine = (text: string, size = 11, bold = false, gap = 16) => {
+      pdf.setFont('helvetica', bold ? 'bold' : 'normal');
+      pdf.setFontSize(size);
+      const lines = pdf.splitTextToSize(text, maxWidth);
+      lines.forEach((line: string) => {
+        if (y > 790) {
+          pdf.addPage();
+          y = 48;
+        }
+        pdf.text(line, margin, y);
+        y += gap;
+      });
+    };
+
+    addLine('Infrastructure Recommendation Report', 18, true, 22);
+    addLine(`Generated: ${new Date().toLocaleString()}`, 10, false, 18);
+    y += 4;
+
+    addLine('Recommendation Summary', 14, true, 20);
+    addLine(`Recommendation: ${scenarioResult.recommendation}`);
+    addLine(`Fit Score: ${scenarioResult.topMatchPercentage}%`);
+    addLine(`Decision Certainty: ${scenarioResult.confidenceLevel} (${scenarioResult.confidenceScore}%)`);
+    y += 4;
+
+    addLine('Why This Recommendation', 14, true, 20);
+    scenarioResult.reasoning.forEach((reason, idx) => addLine(`${idx + 1}. ${reason}`));
+    y += 4;
+
+    addLine('Alternatives', 14, true, 20);
+    scenarioResult.alternatives.forEach((alt, idx) => {
+      addLine(`${idx + 1}. ${alt.architecture} - Fit ${alt.percentage}% (${alt.score} pts), Complexity ${alt.complexity}, Cost ${alt.estimatedCost}`);
+    });
+    y += 4;
+
+    addLine('Inputs', 14, true, 20);
+    scenarioResponses.forEach(response => {
+      const question = sampleQuestions.find(q => q.id === response.questionId);
+      addLine(`- ${question?.text ?? response.questionId}: ${answerText(response.questionId, response.selectedAnswerId)}`);
+    });
+
+    if (sensitivity) {
+      y += 4;
+      addLine('Sensitivity Analysis', 14, true, 20);
+      addLine(`Variations tested: ${sensitivity.totalVariationsTested}`);
+      addLine(`Recommendation switches: ${sensitivity.recommendationSwitches}`);
+      sensitivity.changes
+        .filter(change => change.changesRecommendation)
+        .slice(0, 5)
+        .forEach((change, idx) => {
+          addLine(`${idx + 1}. Change "${change.questionText}" from "${change.currentAnswerText}" to "${change.newAnswerText}" -> ${change.newRecommendation} (fit ${change.newTopMatchPercentage}%, certainty ${change.newConfidenceScore}%)`);
+        });
+    }
+
+    return pdf;
+  };
+
+  const exportCurrentReport = () => {
+    if (!result) return;
+
+    const pdf = buildReportPdf(result, responses);
+    const safeArch = result.recommendation.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    pdf.save(`infra-report-${safeArch}-${Date.now()}.pdf`);
+  };
 
   const handleAnswerSelect = (answerId: string) => {
     const newResponse: QuestionnaireResponse = {
@@ -273,6 +378,8 @@ const Questionnaire: React.FC = () => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setError(null);
+    setSensitivity(null);
+    setIsAnalyzingSensitivity(true);
 
     try {
       const response = await fetch('http://localhost:3001/api/recommend', {
@@ -289,9 +396,23 @@ const Questionnaire: React.FC = () => {
 
       const result = await response.json();
       setResult(result);
+
+      const sensitivityResponse = await fetch('http://localhost:3001/api/recommend/sensitivity', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ responses }),
+      });
+
+      if (sensitivityResponse.ok) {
+        const sensitivityResult = await sensitivityResponse.json();
+        setSensitivity(sensitivityResult);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
+      setIsAnalyzingSensitivity(false);
       setIsSubmitting(false);
     }
   };
@@ -478,6 +599,14 @@ const Questionnaire: React.FC = () => {
                 <div className={`inline-block px-6 py-3 rounded-full font-bold text-lg mb-4 bg-gradient-to-r ${getConfidenceColor(result.confidenceLevel)}`}>
                   Fit {result.topMatchPercentage}% • Decision certainty: {result.confidenceLevel} ({result.confidenceScore}%)
                 </div>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <button
+                    onClick={exportCurrentReport}
+                    className="px-4 py-2 rounded-xl bg-white border border-blue-200 text-blue-700 font-semibold hover:bg-blue-50 transition-colors"
+                  >
+                    Export Report (.pdf)
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -515,9 +644,8 @@ const Questionnaire: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {result.alternatives.map((alt, index) => {
-                        const isWinner = alt.architecture === result.recommendation;
                         return (
-                        <tr key={index} className={isWinner ? 'bg-gradient-to-r from-purple-50 to-blue-50' : 'hover:bg-gray-50 transition-colors'}>
+                        <tr key={index} className="hover:bg-gray-50 transition-colors">
                           <td className="px-6 py-4">
                             <div className="flex items-center">
                               <div className="flex-shrink-0 w-10 h-10 mr-3 flex items-center justify-center">
@@ -533,10 +661,7 @@ const Questionnaire: React.FC = () => {
                               </div>
                               <div>
                                 <div className="text-lg font-bold text-gray-900">{alt.architecture}</div>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-sm text-gray-500">{alt.percentage}% fit</span>
-                                  {isWinner && <span className="text-xs font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">★ Recommended</span>}
-                                </div>
+                                <div className="text-sm text-gray-500 mt-1">{alt.percentage}% fit</div>
                               </div>
                             </div>
                           </td>
@@ -544,7 +669,7 @@ const Questionnaire: React.FC = () => {
                             <div className="flex items-center">
                               <div className="w-16 bg-gray-200 rounded-full h-2 mr-3">
                                 <div
-                                  className={`bg-gradient-to-r ${isWinner ? 'from-purple-500 to-blue-500' : 'from-purple-400 to-blue-400'} h-2 rounded-full transition-all duration-500`}
+                                  className="bg-gradient-to-r from-purple-400 to-blue-400 h-2 rounded-full transition-all duration-500"
                                   style={{ width: `${alt.percentage}%` }}
                                 />
                               </div>
@@ -584,16 +709,12 @@ const Questionnaire: React.FC = () => {
                             </ul>
                           </td>
                           <td className="px-6 py-4">
-                            {isWinner ? (
-                              <span className="text-sm font-semibold text-purple-700">✓ Top pick</span>
-                            ) : (
-                              <button
-                                onClick={() => setWhyNotAlt(alt)}
-                                className="text-sm font-semibold text-purple-600 hover:text-purple-800 underline underline-offset-2 whitespace-nowrap transition-colors"
-                              >
-                                Why not this?
-                              </button>
-                            )}
+                            <button
+                              onClick={() => setWhyNotAlt(alt)}
+                              className="text-sm font-semibold text-purple-600 hover:text-purple-800 underline underline-offset-2 whitespace-nowrap transition-colors"
+                            >
+                              Why not this?
+                            </button>
                           </td>
                         </tr>
                         );
@@ -605,9 +726,8 @@ const Questionnaire: React.FC = () => {
                 {/* Mobile Card View */}
                 <div className="md:hidden space-y-6">
                   {result.alternatives.map((alt, index) => {
-                    const isWinner = alt.architecture === result.recommendation;
                     return (
-                    <div key={index} className={`rounded-2xl shadow-xl border p-6 ${isWinner ? 'bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200' : 'bg-white border-gray-100'}`}>
+                    <div key={index} className="rounded-2xl shadow-xl border p-6 bg-white border-gray-100">
                       <div className="flex items-center mb-4">
                         <div className="flex-shrink-0 w-12 h-12 mr-3 flex items-center justify-center">
                           {getArchitectureImage(alt.architecture) ? (
@@ -621,10 +741,7 @@ const Questionnaire: React.FC = () => {
                           )}
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-xl font-bold text-gray-900">{alt.architecture}</h4>
-                            {isWinner && <span className="text-xs font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">★ Recommended</span>}
-                          </div>
+                          <h4 className="text-xl font-bold text-gray-900">{alt.architecture}</h4>
                           <div className="text-sm text-gray-500">{alt.percentage}% fit</div>
                         </div>
                       </div>
@@ -683,14 +800,12 @@ const Questionnaire: React.FC = () => {
                           </ul>
                         </div>
                       </div>
-                      {!isWinner && (
-                        <button
-                          onClick={() => setWhyNotAlt(alt)}
-                          className="w-full text-center text-sm font-semibold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 py-2 rounded-xl transition-colors"
-                        >
-                          Why not this? →
-                        </button>
-                      )}
+                      <button
+                        onClick={() => setWhyNotAlt(alt)}
+                        className="w-full text-center text-sm font-semibold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 py-2 rounded-xl transition-colors"
+                      >
+                        Why not this? →
+                      </button>
                     </div>
                     );
                   })}
@@ -698,10 +813,45 @@ const Questionnaire: React.FC = () => {
               </div>
             )}
 
+            <div className="mb-10">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">Sensitivity Analysis</h3>
+              {isAnalyzingSensitivity ? (
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-blue-800 font-medium">
+                  Evaluating "what if" answer changes...
+                </div>
+              ) : sensitivity ? (
+                <div className="space-y-4">
+                  <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-700">
+                    Tested {sensitivity.totalVariationsTested} single-answer variations. Recommendation changed in {sensitivity.recommendationSwitches} cases.
+                  </div>
+                  {sensitivity.changes.filter(c => c.changesRecommendation).slice(0, 5).length > 0 ? (
+                    <div className="space-y-3">
+                      {sensitivity.changes.filter(c => c.changesRecommendation).slice(0, 5).map((change, idx) => (
+                        <div key={`${change.questionId}-${change.newAnswerId}-${idx}`} className="bg-yellow-50 border border-yellow-100 rounded-xl p-4">
+                          <p className="text-sm text-gray-700 mb-1"><span className="font-semibold">Switch trigger:</span> {change.questionText}</p>
+                          <p className="text-sm text-gray-700 mb-2">{change.currentAnswerText} → {change.newAnswerText}</p>
+                          <p className="text-sm font-semibold text-gray-900">New recommendation: {change.newRecommendation} (fit {change.newTopMatchPercentage}%, certainty {change.newConfidenceScore}%)</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-green-800 font-medium">
+                      This recommendation is stable under all tested single-answer changes.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-gray-700">
+                  Sensitivity analysis unavailable for this run.
+                </div>
+              )}
+            </div>
+
             <div className="text-center">
               <button
                 onClick={() => {
                   setResult(null);
+                  setSensitivity(null);
                   setResponses([]);
                   setCurrentStep(1);
                 }}

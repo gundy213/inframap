@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { recommend, getQuestions } from './routes/recommend';
+import { recommend, getQuestions, sensitivityAnalysis } from './routes/recommend';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -11,6 +11,7 @@ app.use(express.json());
 
 // Routes
 app.post('/api/recommend', recommend);
+app.post('/api/recommend/sensitivity', sensitivityAnalysis);
 app.get('/api/recommend/questions', getQuestions);
 
 // Health check endpoint
