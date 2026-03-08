@@ -68,14 +68,14 @@ export class ScoringEngine {
       .map(([architecture, score]) => ({ architecture, score }))
       .sort((a, b) => b.score - a.score);
 
-    const topScore = sortedEntries.length > 0 ? sortedEntries[0].score : 1;
+    // Absolute percentage: score vs a realistic "strong fit" benchmark (3 pts/question)
+    const strongFitBenchmark = this.questions.length * 3;
 
     return sortedEntries.map(entry => ({
       architecture: entry.architecture,
       score: entry.score,
-      // Percentage relative to the winner; negatives clamped to 0
-      percentage: topScore > 0
-        ? Math.max(0, Math.round((entry.score / topScore) * 100))
+      percentage: strongFitBenchmark > 0
+        ? Math.min(100, Math.max(0, Math.round((entry.score / strongFitBenchmark) * 100)))
         : 0
     }));
   }
