@@ -220,12 +220,24 @@ interface RecommendationResult {
   }>;
 }
 
+interface WhyNotAlt {
+  architecture: string;
+  score: number;
+  percentage: number;
+  reasons: string[];
+  pros: string[];
+  cons: string[];
+  complexity: 'Low' | 'Medium' | 'High';
+  estimatedCost: string;
+}
+
 const Questionnaire: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [responses, setResponses] = useState<QuestionnaireResponse[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<RecommendationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [whyNotAlt, setWhyNotAlt] = useState<WhyNotAlt | null>(null);
 
   const totalSteps = sampleQuestions.length;
   const currentQuestion = sampleQuestions[currentStep - 1];
@@ -340,10 +352,107 @@ const Questionnaire: React.FC = () => {
     }
   };
 
+  const WhyNotModal: React.FC = () => {
+    if (!whyNotAlt) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setWhyNotAlt(null)}>
+        <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" />
+        <div
+          className="relative bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8 border border-gray-100"
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            onClick={() => setWhyNotAlt(null)}
+            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-lg transition-colors"
+          >
+            ×
+          </button>
+
+          <div className="flex items-center mb-6">
+            <div className="w-14 h-14 mr-4 flex items-center justify-center">
+              {getArchitectureImage(whyNotAlt.architecture) ? (
+                <img src={getArchitectureImage(whyNotAlt.architecture)!} alt={whyNotAlt.architecture} className="w-14 h-14 object-contain" />
+              ) : (
+                <span className="text-4xl">{getArchitectureIcon(whyNotAlt.architecture)}</span>
+              )}
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Why not {whyNotAlt.architecture}?</h2>
+              <p className="text-gray-500 text-sm">Scored {whyNotAlt.percentage}% match vs 100% for {result?.recommendation}</p>
+            </div>
+          </div>
+
+          {/* Score gap */}
+          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl p-5 mb-6">
+            <div className="text-sm font-semibold text-gray-700 mb-3">Score Comparison</div>
+            <div className="space-y-2">
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="font-semibold text-purple-700">{result?.recommendation} (recommended)</span>
+                  <span className="font-bold text-purple-700">100%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full" style={{ width: `100%` }} />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="font-semibold text-gray-600">{whyNotAlt.architecture}</span>
+                  <span className="font-bold text-gray-600">{whyNotAlt.percentage}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className="bg-gradient-to-r from-gray-400 to-gray-500 h-3 rounded-full" style={{ width: `${whyNotAlt.percentage}%` }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Why it scored lower */}
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-3">Why it scored lower</h3>
+            <ul className="space-y-3">
+              {whyNotAlt.cons.map((con, i) => (
+                <li key={i} className="flex items-start bg-red-50 rounded-xl p-3">
+                  <span className="text-red-500 mr-3 font-bold mt-0.5">✗</span>
+                  <span className="text-gray-700 text-sm">{con}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* When it WOULD make sense */}
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-3">When {whyNotAlt.architecture} would be a better fit</h3>
+            <ul className="space-y-3">
+              {whyNotAlt.reasons.map((reason, i) => (
+                <li key={i} className="flex items-start bg-blue-50 rounded-xl p-3">
+                  <span className="text-blue-500 mr-3 font-bold mt-0.5">→</span>
+                  <span className="text-gray-700 text-sm">{reason}</span>
+                </li>
+              ))}
+              {whyNotAlt.pros.slice(0, 2).map((pro, i) => (
+                <li key={`pro-${i}`} className="flex items-start bg-green-50 rounded-xl p-3">
+                  <span className="text-green-500 mr-3 font-bold mt-0.5">✓</span>
+                  <span className="text-gray-700 text-sm">{pro}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="flex justify-between items-center text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
+            <span>Complexity: <span className={`font-semibold ${ whyNotAlt.complexity === 'Low' ? 'text-green-600' : whyNotAlt.complexity === 'Medium' ? 'text-yellow-600' : 'text-red-600'}`}>{whyNotAlt.complexity}</span></span>
+            <span>Est. Cost: <span className="font-semibold text-gray-800">{whyNotAlt.estimatedCost}</span></span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (result) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 py-6 md:py-12">
         <div className="max-w-6xl mx-auto px-4 md:px-6">
+          {whyNotAlt && <WhyNotModal />}
           <div className="bg-white rounded-2xl md:rounded-3xl shadow-xl md:shadow-2xl p-6 md:p-10 border border-gray-100">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent text-center mb-8">
               Your Infrastructure Recommendation
@@ -400,11 +509,14 @@ const Questionnaire: React.FC = () => {
                         <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 uppercase tracking-wider">Est. Cost</th>
                         <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 uppercase tracking-wider">Pros</th>
                         <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 uppercase tracking-wider">Cons</th>
+                        <th className="px-6 py-4"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {result.alternatives.map((alt, index) => (
-                        <tr key={index} className="hover:bg-gray-50 transition-colors">
+                      {result.alternatives.map((alt, index) => {
+                        const isWinner = alt.architecture === result.recommendation;
+                        return (
+                        <tr key={index} className={isWinner ? 'bg-gradient-to-r from-purple-50 to-blue-50' : 'hover:bg-gray-50 transition-colors'}>
                           <td className="px-6 py-4">
                             <div className="flex items-center">
                               <div className="flex-shrink-0 w-10 h-10 mr-3 flex items-center justify-center">
@@ -420,7 +532,10 @@ const Questionnaire: React.FC = () => {
                               </div>
                               <div>
                                 <div className="text-lg font-bold text-gray-900">{alt.architecture}</div>
-                                <div className="text-sm text-gray-500 mt-1">{alt.percentage}% match</div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-sm text-gray-500">{alt.percentage}% match</span>
+                                  {isWinner && <span className="text-xs font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">★ Recommended</span>}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -428,7 +543,7 @@ const Questionnaire: React.FC = () => {
                             <div className="flex items-center">
                               <div className="w-16 bg-gray-200 rounded-full h-2 mr-3">
                                 <div
-                                  className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-500"
+                                  className={`bg-gradient-to-r ${isWinner ? 'from-purple-500 to-blue-500' : 'from-purple-400 to-blue-400'} h-2 rounded-full transition-all duration-500`}
                                   style={{ width: `${alt.percentage}%` }}
                                 />
                               </div>
@@ -467,16 +582,31 @@ const Questionnaire: React.FC = () => {
                               ))}
                             </ul>
                           </td>
+                          <td className="px-6 py-4">
+                            {isWinner ? (
+                              <span className="text-sm font-semibold text-purple-700">✓ Top pick</span>
+                            ) : (
+                              <button
+                                onClick={() => setWhyNotAlt(alt)}
+                                className="text-sm font-semibold text-purple-600 hover:text-purple-800 underline underline-offset-2 whitespace-nowrap transition-colors"
+                              >
+                                Why not this?
+                              </button>
+                            )}
+                          </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
 
                 {/* Mobile Card View */}
                 <div className="md:hidden space-y-6">
-                  {result.alternatives.map((alt, index) => (
-                    <div key={index} className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+                  {result.alternatives.map((alt, index) => {
+                    const isWinner = alt.architecture === result.recommendation;
+                    return (
+                    <div key={index} className={`rounded-2xl shadow-xl border p-6 ${isWinner ? 'bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200' : 'bg-white border-gray-100'}`}>
                       <div className="flex items-center mb-4">
                         <div className="flex-shrink-0 w-12 h-12 mr-3 flex items-center justify-center">
                           {getArchitectureImage(alt.architecture) ? (
@@ -490,7 +620,10 @@ const Questionnaire: React.FC = () => {
                           )}
                         </div>
                         <div>
-                          <h4 className="text-xl font-bold text-gray-900">{alt.architecture}</h4>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xl font-bold text-gray-900">{alt.architecture}</h4>
+                            {isWinner && <span className="text-xs font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">★ Recommended</span>}
+                          </div>
                           <div className="text-sm text-gray-500">{alt.percentage}% match</div>
                         </div>
                       </div>
@@ -525,7 +658,7 @@ const Questionnaire: React.FC = () => {
                         <span className="text-lg font-bold text-gray-900">{alt.estimatedCost}</span>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
                           <div className="text-sm font-semibold text-green-700 mb-2">Pros</div>
                           <ul className="text-sm text-gray-600 space-y-1">
@@ -549,8 +682,17 @@ const Questionnaire: React.FC = () => {
                           </ul>
                         </div>
                       </div>
+                      {!isWinner && (
+                        <button
+                          onClick={() => setWhyNotAlt(alt)}
+                          className="w-full text-center text-sm font-semibold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 py-2 rounded-xl transition-colors"
+                        >
+                          Why not this? →
+                        </button>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

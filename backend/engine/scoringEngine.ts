@@ -64,23 +64,20 @@ export class ScoringEngine {
    * Convert raw scores to percentage-based results
    */
   private scoresToResults(scores: ArchitectureScores): ScoringResult[] {
-    const totalScore = Object.values(scores).reduce((sum, score) => sum + score, 0);
+    const sortedEntries = (Object.entries(scores) as [ArchitectureType, number][])
+      .map(([architecture, score]) => ({ architecture, score }))
+      .sort((a, b) => b.score - a.score);
 
-    if (totalScore === 0) {
-      return Object.keys(scores).map(arch => ({
-        architecture: arch as ArchitectureType,
-        score: 0,
-        percentage: 0
-      }));
-    }
+    const topScore = sortedEntries.length > 0 ? sortedEntries[0].score : 1;
 
-    return Object.entries(scores)
-      .map(([architecture, score]) => ({
-        architecture: architecture as ArchitectureType,
-        score,
-        percentage: Math.round((score / totalScore) * 100)
-      }))
-      .sort((a, b) => b.score - a.score); // Sort by score descending
+    return sortedEntries.map(entry => ({
+      architecture: entry.architecture,
+      score: entry.score,
+      // Percentage relative to the winner; negatives clamped to 0
+      percentage: topScore > 0
+        ? Math.max(0, Math.round((entry.score / topScore) * 100))
+        : 0
+    }));
   }
 
   /**
