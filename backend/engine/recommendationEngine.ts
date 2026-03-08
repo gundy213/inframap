@@ -45,11 +45,13 @@ export class RecommendationEngine {
     // Apply business rules
     const ruleAdjustedRaw = this.ruleEngine.applyRules(rawScores, detailedScoring.recommendation.scores);
 
-    // Recalculate percentages relative to the post-rule winner (rules change scores but not percentages)
-    const postRuleTop = ruleAdjustedRaw.length > 0 ? ruleAdjustedRaw[0].score : 1;
+    // Recalculate percentages as absolute match scores (score vs strong-fit benchmark)
+    const strongFitBenchmark = responses.length * 3;
     const ruleAdjustedResults = ruleAdjustedRaw.map(r => ({
       ...r,
-      percentage: postRuleTop > 0 ? Math.max(0, Math.round((r.score / postRuleTop) * 100)) : 0
+      percentage: strongFitBenchmark > 0
+        ? Math.min(100, Math.max(0, Math.round((r.score / strongFitBenchmark) * 100)))
+        : 0
     }));
 
     // Compute consistency: fraction of questions where the winner scored highest
@@ -74,6 +76,7 @@ export class RecommendationEngine {
 
     return {
       recommendation: ruleAdjustedResults[0].architecture,
+      topMatchPercentage: ruleAdjustedResults[0].percentage,
       confidenceScore,
       confidenceLevel,
       reasoning,
@@ -343,8 +346,8 @@ export class RecommendationEngine {
     complexity: 'Low' | 'Medium' | 'High';
     estimatedCost: string;
   }> {
-    // Return top 4 architectures including the winner as the first entry (percentage: 100)
-    return results.slice(0, 4).map(result => ({
+    // Return next best 3 alternatives (excluding the primary recommendation)
+    return results.slice(1, 4).map(result => ({
       architecture: result.architecture,
       score: result.score,
       percentage: result.percentage,

@@ -12,6 +12,7 @@ export interface RecommendRequest {
 
 export interface RecommendResponse {
   recommendation: string;
+  topMatchPercentage: number;
   confidenceScore: number;
   confidenceLevel: 'Low' | 'Medium' | 'High';
   reasoning: string[];
@@ -53,6 +54,7 @@ export const recommend = async (req: Request, res: Response): Promise<void> => {
     // Return the recommendation
     const response: RecommendResponse = {
       recommendation: result.recommendation,
+      topMatchPercentage: result.topMatchPercentage,
       confidenceScore: result.confidenceScore,
       confidenceLevel: result.confidenceLevel,
       reasoning: result.reasoning,

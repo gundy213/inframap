@@ -84,6 +84,7 @@ export interface RecommendationResult {
 // Enhanced recommendation output with confidence and reasoning
 export interface RecommendationOutput {
   recommendation: ArchitectureType;
+  topMatchPercentage: number; // Absolute match score for the winner (0-100)
   confidenceScore: number; // 0-100 percentage
   confidenceLevel: 'Low' | 'Medium' | 'High'; // Confidence level description
   reasoning: string[];

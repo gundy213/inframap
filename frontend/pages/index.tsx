@@ -205,6 +205,7 @@ interface QuestionnaireResponse {
 
 interface RecommendationResult {
   recommendation: string;
+  topMatchPercentage: number;
   confidenceScore: number;
   confidenceLevel: 'Low' | 'Medium' | 'High';
   reasoning: string[];
@@ -378,7 +379,7 @@ const Questionnaire: React.FC = () => {
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Why not {whyNotAlt.architecture}?</h2>
-              <p className="text-gray-500 text-sm">Scored {whyNotAlt.percentage}% match vs 100% for {result?.recommendation}</p>
+              <p className="text-gray-500 text-sm">Fit score: {whyNotAlt.percentage}% vs {result?.topMatchPercentage}% for {result?.recommendation}</p>
             </div>
           </div>
 
@@ -389,10 +390,10 @@ const Questionnaire: React.FC = () => {
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="font-semibold text-purple-700">{result?.recommendation} (recommended)</span>
-                  <span className="font-bold text-purple-700">100%</span>
+                  <span className="font-bold text-purple-700">{result?.topMatchPercentage}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full" style={{ width: `100%` }} />
+                  <div className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full" style={{ width: `${result?.topMatchPercentage ?? 0}%` }} />
                 </div>
               </div>
               <div>
@@ -475,7 +476,7 @@ const Questionnaire: React.FC = () => {
                   {result.recommendation}
                 </h2>
                 <div className={`inline-block px-6 py-3 rounded-full font-bold text-lg mb-4 bg-gradient-to-r ${getConfidenceColor(result.confidenceLevel)}`}>
-                  {result.confidenceLevel} Confidence • {result.confidenceScore}%
+                  Fit {result.topMatchPercentage}% • Decision certainty: {result.confidenceLevel} ({result.confidenceScore}%)
                 </div>
               </div>
             </div>
@@ -504,7 +505,7 @@ const Questionnaire: React.FC = () => {
                     <thead>
                       <tr className="bg-gradient-to-r from-purple-50 to-blue-50">
                         <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 uppercase tracking-wider">Architecture</th>
-                        <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 uppercase tracking-wider">Match Score</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 uppercase tracking-wider">Fit Score</th>
                         <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 uppercase tracking-wider">Complexity</th>
                         <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 uppercase tracking-wider">Est. Cost</th>
                         <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 uppercase tracking-wider">Pros</th>
@@ -533,7 +534,7 @@ const Questionnaire: React.FC = () => {
                               <div>
                                 <div className="text-lg font-bold text-gray-900">{alt.architecture}</div>
                                 <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-sm text-gray-500">{alt.percentage}% match</span>
+                                  <span className="text-sm text-gray-500">{alt.percentage}% fit</span>
                                   {isWinner && <span className="text-xs font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">★ Recommended</span>}
                                 </div>
                               </div>
@@ -624,13 +625,13 @@ const Questionnaire: React.FC = () => {
                             <h4 className="text-xl font-bold text-gray-900">{alt.architecture}</h4>
                             {isWinner && <span className="text-xs font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">★ Recommended</span>}
                           </div>
-                          <div className="text-sm text-gray-500">{alt.percentage}% match</div>
+                          <div className="text-sm text-gray-500">{alt.percentage}% fit</div>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4 mb-4">
                         <div>
-                          <div className="text-sm font-semibold text-gray-700 mb-1">Match Score</div>
+                          <div className="text-sm font-semibold text-gray-700 mb-1">Fit Score</div>
                           <div className="flex items-center">
                             <div className="w-12 bg-gray-200 rounded-full h-2 mr-2">
                               <div
