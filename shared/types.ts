@@ -92,5 +92,9 @@ export interface RecommendationOutput {
     score: number;
     percentage: number;
     reasons: string[];
+    pros: string[];
+    cons: string[];
+    complexity: 'Low' | 'Medium' | 'High';
+    estimatedCost: string;
   }>;
 }
