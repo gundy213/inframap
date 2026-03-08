@@ -134,7 +134,14 @@ Detailed reasoning includes:
 ## Project Structure
 
 ```
+├── .github/
+│   └── workflows/
+│       └── ci.yml                  # CI pipeline (tests + container builds)
 ├── backend/
+│   ├── __tests__/
+│   │   ├── api.integration.test.ts
+│   │   ├── recommendationEngine.test.ts
+│   │   └── scoringEngine.test.ts
 │   ├── engine/
 │   │   ├── recommendationEngine.ts    # Main recommendation engine
 │   │   ├── scoringEngine.ts          # Core scoring logic
@@ -143,6 +150,8 @@ Detailed reasoning includes:
 │   │   └── test.ts                   # Basic validation tests
 │   ├── routes/
 │   │   └── recommend.ts              # API endpoints
+│   ├── Dockerfile
+│   ├── jest.config.cjs
 │   ├── server.ts                     # Express server
 │   ├── package.json
 │   └── tsconfig.json
@@ -151,11 +160,13 @@ Detailed reasoning includes:
 │   │   ├── ProgressBar.tsx           # Progress indicator
 │   │   └── QuestionCard.tsx          # Question display component
 │   ├── pages/
-│   │   ├── index.tsx                 # Main questionnaire page
-│   │   └── results.tsx               # Results display page
+│   │   └── index.tsx                 # Questionnaire + results UI
+│   ├── public/
+│   │   └── images/                   # Architecture/provider icons
 │   ├── src/
 │   │   ├── main.tsx                  # React entry point
 │   │   └── index.css                 # Global styles
+│   ├── Dockerfile
 │   ├── index.html                    # HTML template
 │   ├── package.json
 │   ├── vite.config.ts
