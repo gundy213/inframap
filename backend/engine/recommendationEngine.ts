@@ -317,13 +317,21 @@ export class RecommendationEngine {
     score: number;
     percentage: number;
     reasons: string[];
+    pros: string[];
+    cons: string[];
+    complexity: 'Low' | 'Medium' | 'High';
+    estimatedCost: string;
   }> {
     // Return top 2-3 alternatives (excluding the primary recommendation)
     return results.slice(1, 4).map(result => ({
       architecture: result.architecture,
       score: result.score,
       percentage: result.percentage,
-      reasons: this.getAlternativeReasons(result.architecture, results[0].architecture)
+      reasons: this.getAlternativeReasons(result.architecture, results[0].architecture),
+      pros: this.getArchitecturePros(result.architecture),
+      cons: this.getArchitectureCons(result.architecture),
+      complexity: this.getArchitectureComplexity(result.architecture),
+      estimatedCost: this.getEstimatedCost(result.architecture)
     }));
   }
 
@@ -457,6 +465,256 @@ export class RecommendationEngine {
     };
 
     return advantages[architecture] || [];
+  }
+
+  /**
+   * Get pros for each architecture
+   */
+  private getArchitecturePros(architecture: ArchitectureType): string[] {
+    const pros: Record<ArchitectureType, string[]> = {
+      Kubernetes: [
+        'Excellent scalability and orchestration',
+        'Vendor-neutral and highly flexible',
+        'Strong community and ecosystem',
+        'Advanced deployment strategies'
+      ],
+      'Azure App Services': [
+        'Fully managed platform',
+        'Quick deployment and scaling',
+        'Built-in CI/CD integration',
+        'Strong Azure ecosystem integration'
+      ],
+      'Azure Container Apps': [
+        'Serverless container experience',
+        'Event-driven scaling',
+        'Dapr integration for microservices',
+        'Managed infrastructure'
+      ],
+      Serverless: [
+        'Pay only for execution time',
+        'Automatic scaling',
+        'No infrastructure management',
+        'Fast development cycles'
+      ],
+      'Virtual Machines': [
+        'Full control over infrastructure',
+        'Support for legacy applications',
+        'Custom configurations possible',
+        'Predictable performance'
+      ],
+      'AWS Elastic Beanstalk': [
+        'Managed application platform',
+        'Multi-language support',
+        'Easy deployment and scaling',
+        'AWS service integration'
+      ],
+      'AWS ECS/Fargate': [
+        'Serverless container orchestration',
+        'Deep AWS integration',
+        'Cost-effective for container workloads',
+        'Managed scaling and patching'
+      ],
+      'AWS Lambda': [
+        'True serverless computing',
+        'Sub-second billing',
+        'Massive concurrency support',
+        'Rich AWS service integrations'
+      ],
+      'AWS EC2': [
+        'Complete infrastructure control',
+        'Wide instance type selection',
+        'Custom AMIs and configurations',
+        'Reserved instance discounts'
+      ],
+      'AWS EKS': [
+        'Managed Kubernetes on AWS',
+        'Strong AWS service integration',
+        'Enterprise-grade security',
+        'Extensive partner ecosystem'
+      ],
+      'GCP App Engine': [
+        'Fully managed application platform',
+        'Automatic scaling and patching',
+        'Strong GCP service integration',
+        'Traffic splitting for testing'
+      ],
+      'GCP Cloud Run': [
+        'Serverless containers',
+        'Any language/framework support',
+        'Automatic HTTPS and scaling',
+        'GCP service mesh integration'
+      ],
+      'GCP Cloud Functions': [
+        'Event-driven serverless functions',
+        'Sub-second cold starts',
+        'GCP service integrations',
+        'Pay-per-invocation pricing'
+      ],
+      'GCP Compute Engine': [
+        'Full VM control on GCP',
+        'Custom machine types',
+        'Preemptible instances for cost savings',
+        'Global load balancing'
+      ],
+      'GCP GKE': [
+        'Managed Kubernetes on GCP',
+        'Advanced networking features',
+        'Multi-cluster support',
+        'Integrated monitoring and logging'
+      ]
+    };
+
+    return pros[architecture] || [];
+  }
+
+  /**
+   * Get cons for each architecture
+   */
+  private getArchitectureCons(architecture: ArchitectureType): string[] {
+    const cons: Record<ArchitectureType, string[]> = {
+      Kubernetes: [
+        'Steep learning curve',
+        'Complex operational overhead',
+        'Higher management costs',
+        'Requires specialized skills'
+      ],
+      'Azure App Services': [
+        'Limited customization options',
+        'Vendor lock-in to Azure',
+        'Scaling limitations for very large apps',
+        'Less control over underlying infrastructure'
+      ],
+      'Azure Container Apps': [
+        'Newer service with evolving features',
+        'Limited to Azure ecosystem',
+        'May have cold start issues',
+        'Less mature than alternatives'
+      ],
+      Serverless: [
+        'Cold start latency',
+        'Limited execution time',
+        'Vendor-specific runtimes',
+        'Debugging complexity'
+      ],
+      'Virtual Machines': [
+        'High management overhead',
+        'Manual scaling required',
+        'Security patching responsibility',
+        'Higher operational costs'
+      ],
+      'AWS Elastic Beanstalk': [
+        'Limited to supported platforms',
+        'Less flexible than custom deployments',
+        'AWS vendor lock-in',
+        'May require workarounds for complex setups'
+      ],
+      'AWS ECS/Fargate': [
+        'AWS-specific container orchestration',
+        'Learning curve for ECS concepts',
+        'May be overkill for simple applications',
+        'Vendor lock-in concerns'
+      ],
+      'AWS Lambda': [
+        'Limited to supported runtimes',
+        'Cold start performance issues',
+        'Complex debugging and monitoring',
+        'Vendor lock-in to AWS'
+      ],
+      'AWS EC2': [
+        'Manual management required',
+        'Security responsibility',
+        'Scaling complexity',
+        'Higher operational costs'
+      ],
+      'AWS EKS': [
+        'Complex Kubernetes management',
+        'AWS-specific features and limitations',
+        'Higher operational overhead',
+        'Requires Kubernetes expertise'
+      ],
+      'GCP App Engine': [
+        'Limited to supported runtimes',
+        'Less control over infrastructure',
+        'May not support all application types',
+        'GCP vendor lock-in'
+      ],
+      'GCP Cloud Run': [
+        'Limited to containerized workloads',
+        'Cold start considerations',
+        'May require container expertise',
+        'GCP ecosystem dependency'
+      ],
+      'GCP Cloud Functions': [
+        'Limited execution time',
+        'Cold start latency',
+        'Debugging challenges',
+        'GCP vendor lock-in'
+      ],
+      'GCP Compute Engine': [
+        'Manual management overhead',
+        'Security patching responsibility',
+        'Scaling complexity',
+        'Higher operational costs'
+      ],
+      'GCP GKE': [
+        'Kubernetes complexity',
+        'Operational overhead',
+        'Requires specialized skills',
+        'Management costs'
+      ]
+    };
+
+    return cons[architecture] || [];
+  }
+
+  /**
+   * Get complexity level for each architecture
+   */
+  private getArchitectureComplexity(architecture: ArchitectureType): 'Low' | 'Medium' | 'High' {
+    const complexityLevels: Record<ArchitectureType, 'Low' | 'Medium' | 'High'> = {
+      'Azure App Services': 'Low',
+      'AWS Elastic Beanstalk': 'Low',
+      'GCP App Engine': 'Low',
+      Serverless: 'Low',
+      'AWS Lambda': 'Low',
+      'GCP Cloud Functions': 'Low',
+      'Azure Container Apps': 'Medium',
+      'AWS ECS/Fargate': 'Medium',
+      'GCP Cloud Run': 'Medium',
+      'Virtual Machines': 'High',
+      'AWS EC2': 'High',
+      'GCP Compute Engine': 'High',
+      Kubernetes: 'High',
+      'AWS EKS': 'High',
+      'GCP GKE': 'High'
+    };
+
+    return complexityLevels[architecture] || 'Medium';
+  }
+
+  /**
+   * Get estimated cost range for each architecture
+   */
+  private getEstimatedCost(architecture: ArchitectureType): string {
+    const costRanges: Record<ArchitectureType, string> = {
+      'Azure App Services': '$50-500/month',
+      'AWS Elastic Beanstalk': '$50-500/month',
+      'GCP App Engine': '$50-500/month',
+      Serverless: '$10-200/month',
+      'AWS Lambda': '$10-200/month',
+      'GCP Cloud Functions': '$10-200/month',
+      'Azure Container Apps': '$100-800/month',
+      'AWS ECS/Fargate': '$100-800/month',
+      'GCP Cloud Run': '$100-800/month',
+      'Virtual Machines': '$200-2000+/month',
+      'AWS EC2': '$200-2000+/month',
+      'GCP Compute Engine': '$200-2000+/month',
+      Kubernetes: '$500-5000+/month',
+      'AWS EKS': '$500-5000+/month',
+      'GCP GKE': '$500-5000+/month'
+    };
+
+    return costRanges[architecture] || '$100-1000/month';
   }
 
   // Helper methods for analyzing question patterns

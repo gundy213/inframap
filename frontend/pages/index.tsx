@@ -213,6 +213,10 @@ interface RecommendationResult {
     score: number;
     percentage: number;
     reasons: string[];
+    pros: string[];
+    cons: string[];
+    complexity: 'Low' | 'Medium' | 'High';
+    estimatedCost: string;
   }>;
 }
 
@@ -331,24 +335,73 @@ const Questionnaire: React.FC = () => {
 
             {result.alternatives.length > 0 && (
               <div className="mb-10">
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Alternative Options</h3>
-                <div className="space-y-5">
-                  {result.alternatives.map((alt, index) => (
-                    <div key={index} className="border-2 border-gray-100 rounded-2xl p-6 hover:shadow-lg transition-shadow">
-                      <div className="flex justify-between items-center mb-3">
-                        <h4 className="font-bold text-gray-900 text-xl">{alt.architecture}</h4>
-                        <span className="text-sm bg-gradient-to-r from-purple-100 to-blue-100 text-purple-800 px-3 py-1 rounded-full font-semibold">{alt.percentage}% match</span>
-                      </div>
-                      <ul className="text-gray-600 space-y-2">
-                        {alt.reasons.map((reason, reasonIndex) => (
-                          <li key={reasonIndex} className="flex items-start">
-                            <span className="mr-3 text-purple-500">•</span>
-                            <span className="text-lg">{reason}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
+                <h3 className="text-2xl font-bold text-gray-900 mb-6">Architecture Comparison</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full bg-white rounded-2xl shadow-xl border border-gray-100">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-purple-50 to-blue-50">
+                        <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 uppercase tracking-wider">Architecture</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 uppercase tracking-wider">Match Score</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 uppercase tracking-wider">Complexity</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 uppercase tracking-wider">Est. Cost</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 uppercase tracking-wider">Pros</th>
+                        <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 uppercase tracking-wider">Cons</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {result.alternatives.map((alt, index) => (
+                        <tr key={index} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="text-lg font-bold text-gray-900">{alt.architecture}</div>
+                            <div className="text-sm text-gray-500 mt-1">{alt.percentage}% match</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-gray-200 rounded-full h-2 mr-3">
+                                <div
+                                  className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-500"
+                                  style={{ width: `${alt.percentage}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-semibold text-gray-700">{alt.score} pts</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${
+                              alt.complexity === 'Low' ? 'bg-green-100 text-green-800' :
+                              alt.complexity === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {alt.complexity}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-sm font-semibold text-gray-900">{alt.estimatedCost}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <ul className="text-sm text-gray-600 space-y-1">
+                              {alt.pros.slice(0, 2).map((pro, proIndex) => (
+                                <li key={proIndex} className="flex items-start">
+                                  <span className="text-green-500 mr-2">✓</span>
+                                  <span>{pro}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </td>
+                          <td className="px-6 py-4">
+                            <ul className="text-sm text-gray-600 space-y-1">
+                              {alt.cons.slice(0, 2).map((con, conIndex) => (
+                                <li key={conIndex} className="flex items-start">
+                                  <span className="text-red-500 mr-2">✗</span>
+                                  <span>{con}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
