@@ -85,6 +85,7 @@ export interface RecommendationResult {
 export interface RecommendationOutput {
   recommendation: ArchitectureType;
   confidenceScore: number; // 0-100 percentage
+  confidenceLevel: 'Low' | 'Medium' | 'High'; // Confidence level description
   reasoning: string[];
   alternatives: Array<{
     architecture: ArchitectureType;
