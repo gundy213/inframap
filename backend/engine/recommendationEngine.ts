@@ -47,6 +47,7 @@ export class RecommendationEngine {
 
     // Calculate confidence score
     const confidenceScore = this.calculateConfidenceScore(ruleAdjustedResults, responses.length);
+    const confidenceLevel = this.getConfidenceLevel(confidenceScore);
 
     // Generate reasoning
     const reasoning = this.generateReasoning(detailedScoring.questionBreakdown, ruleAdjustedResults[0]);
@@ -57,6 +58,7 @@ export class RecommendationEngine {
     return {
       recommendation: ruleAdjustedResults[0].architecture,
       confidenceScore,
+      confidenceLevel,
       reasoning,
       alternatives
     };
@@ -64,29 +66,52 @@ export class RecommendationEngine {
 
   /**
    * Calculate confidence score based on score distribution and response completeness
+   * Uses a weighted average approach instead of multiplication for higher, more meaningful scores
    */
   private calculateConfidenceScore(results: ScoringResult[], totalQuestions: number): number {
     if (results.length === 0) return 0;
 
     const topScore = results[0].score;
+    const secondScore = results.length > 1 ? results[1].score : 0;
     const totalScore = results.reduce((sum, result) => sum + result.score, 0);
+    const maxPossibleScore = totalQuestions * 4; // Max 4 points per question
 
     if (totalScore === 0) return 0;
 
-    // Base confidence from score separation (how much better the top choice is)
-    const scoreSeparation = topScore / totalScore;
-    let confidence = scoreSeparation * 100;
+    // 1. Raw score quality: How good is the top score as % of max possible? (40% weight)
+    const topScoreQuality = Math.min((topScore / maxPossibleScore) * 100, 100);
 
-    // Adjust for number of questions answered (more questions = higher confidence)
-    const questionFactor = Math.min(totalQuestions / 6, 1); // Normalize to 6 questions as baseline
-    confidence *= questionFactor;
+    // 2. Question completeness: More questions answered = higher confidence (25% weight)
+    const questionFactor = Math.min((totalQuestions / 10) * 100, 100); // 10 questions normalize to 100
 
-    // Adjust for score distribution (more even distribution = lower confidence)
-    const scoreVariance = this.calculateVariance(results.map(r => r.score));
-    const varianceFactor = Math.max(0, 1 - (scoreVariance / (totalScore * totalScore)));
-    confidence *= varianceFactor;
+    // 3. Score dominance: How differentiated is the winner? (35% weight)
+    // Calculate gap as percentage (max 100 when there's clear separation)
+    const scoreDominance = secondScore > 0 ? ((topScore - secondScore) / topScore) * 100 : 100;
+    const dominanceFactor = Math.min(scoreDominance, 100);
 
-    return Math.round(Math.min(confidence, 100));
+    // Weighted average instead of multiplication
+    let confidence = (topScoreQuality * 0.4) + (questionFactor * 0.25) + (dominanceFactor * 0.35);
+
+    // Apply minimum floor - at least 45% for valid recommendations
+    confidence = Math.max(confidence, 45);
+
+    // Cap at 100
+    confidence = Math.min(confidence, 100);
+
+    return Math.round(confidence);
+  }
+
+  /**
+   * Convert confidence score to confidence level
+   */
+  private getConfidenceLevel(confidenceScore: number): 'Low' | 'Medium' | 'High' {
+    if (confidenceScore >= 70) {
+      return 'High';
+    } else if (confidenceScore >= 55) {
+      return 'Medium';
+    } else {
+      return 'Low';
+    }
   }
 
   /**

@@ -206,6 +206,7 @@ interface QuestionnaireResponse {
 interface RecommendationResult {
   recommendation: string;
   confidenceScore: number;
+  confidenceLevel: 'Low' | 'Medium' | 'High';
   reasoning: string[];
   alternatives: Array<{
     architecture: string;
@@ -280,6 +281,19 @@ const Questionnaire: React.FC = () => {
 
   const canProceed = currentResponse?.selectedAnswerId !== undefined;
 
+  const getConfidenceColor = (level: string) => {
+    switch (level) {
+      case 'High':
+        return 'from-green-100 to-emerald-100 text-green-800';
+      case 'Medium':
+        return 'from-yellow-100 to-amber-100 text-yellow-800';
+      case 'Low':
+        return 'from-blue-100 to-cyan-100 text-blue-800';
+      default:
+        return 'from-gray-100 to-slate-100 text-gray-800';
+    }
+  };
+
   if (result) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 py-12">
@@ -292,11 +306,11 @@ const Questionnaire: React.FC = () => {
             <div className="mb-10">
               <div className="text-center mb-8">
                 <div className="text-7xl mb-6">🏗️</div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                <h2 className="text-3xl font-bold text-gray-900 mb-5">
                   {result.recommendation}
                 </h2>
-                <div className="text-xl text-gray-600 font-medium">
-                  Confidence: <span className="text-purple-600">{result.confidenceScore}%</span>
+                <div className={`inline-block px-6 py-3 rounded-full font-bold text-lg mb-4 bg-gradient-to-r ${getConfidenceColor(result.confidenceLevel)}`}>
+                  {result.confidenceLevel} Confidence • {result.confidenceScore}%
                 </div>
               </div>
             </div>

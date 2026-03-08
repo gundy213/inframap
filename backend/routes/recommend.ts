@@ -13,6 +13,7 @@ export interface RecommendRequest {
 export interface RecommendResponse {
   recommendation: string;
   confidenceScore: number;
+  confidenceLevel: 'Low' | 'Medium' | 'High';
   reasoning: string[];
   alternatives: Array<{
     architecture: string;
@@ -53,6 +54,7 @@ export const recommend = async (req: Request, res: Response): Promise<void> => {
     const response: RecommendResponse = {
       recommendation: result.recommendation,
       confidenceScore: result.confidenceScore,
+      confidenceLevel: result.confidenceLevel,
       reasoning: result.reasoning,
       alternatives: result.alternatives
     };
