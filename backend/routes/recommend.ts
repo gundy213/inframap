@@ -10,6 +10,29 @@ export interface RecommendRequest {
   responses: QuestionnaireResponse[];
 }
 
+export interface SensitivityAnalysisResponse {
+  baseRecommendation: string;
+  baseTopMatchPercentage: number;
+  baseConfidenceScore: number;
+  totalVariationsTested: number;
+  recommendationSwitches: number;
+  changes: Array<{
+    questionId: string;
+    questionText: string;
+    currentAnswerId: string;
+    currentAnswerText: string;
+    newAnswerId: string;
+    newAnswerText: string;
+    newRecommendation: string;
+    newTopMatchPercentage: number;
+    newConfidenceScore: number;
+    newConfidenceLevel: 'Low' | 'Medium' | 'High';
+    changesRecommendation: boolean;
+    fitDelta: number;
+    certaintyDelta: number;
+  }>;
+}
+
 export interface RecommendResponse {
   recommendation: string;
   topMatchPercentage: number;
@@ -97,6 +120,97 @@ export const getQuestions = async (req: Request, res: Response): Promise<void> =
     console.error('Error fetching questions:', error);
     res.status(500).json({
       error: 'Internal server error occurred while fetching questions.'
+    });
+  }
+};
+
+/**
+ * POST /api/recommend/sensitivity
+ * Analyze how changing one answer at a time impacts the recommendation
+ */
+export const sensitivityAnalysis = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { responses }: RecommendRequest = req.body;
+
+    if (!responses || !Array.isArray(responses) || responses.length === 0) {
+      res.status(400).json({
+        error: 'Invalid request body. Expected non-empty { responses: QuestionnaireResponse[] }'
+      });
+      return;
+    }
+
+    const base = recommendationEngine.generateRecommendation(responses);
+    const changes: SensitivityAnalysisResponse['changes'] = [];
+    let totalVariationsTested = 0;
+
+    for (const response of responses) {
+      const question = sampleQuestions.find(q => q.id === response.questionId);
+      if (!question) {
+        continue;
+      }
+
+      const currentOption = question.options.find(o => o.id === response.selectedAnswerId);
+      if (!currentOption) {
+        continue;
+      }
+
+      for (const option of question.options) {
+        if (option.id === response.selectedAnswerId) {
+          continue;
+        }
+
+        totalVariationsTested += 1;
+        const variedResponses = responses.map(r =>
+          r.questionId === response.questionId
+            ? { ...r, selectedAnswerId: option.id }
+            : r
+        );
+
+        const varied = recommendationEngine.generateRecommendation(variedResponses);
+        const changesRecommendation = varied.recommendation !== base.recommendation;
+
+        changes.push({
+          questionId: question.id,
+          questionText: question.text,
+          currentAnswerId: currentOption.id,
+          currentAnswerText: currentOption.text,
+          newAnswerId: option.id,
+          newAnswerText: option.text,
+          newRecommendation: varied.recommendation,
+          newTopMatchPercentage: varied.topMatchPercentage,
+          newConfidenceScore: varied.confidenceScore,
+          newConfidenceLevel: varied.confidenceLevel,
+          changesRecommendation,
+          fitDelta: varied.topMatchPercentage - base.topMatchPercentage,
+          certaintyDelta: varied.confidenceScore - base.confidenceScore
+        });
+      }
+    }
+
+    changes.sort((a, b) => {
+      if (a.changesRecommendation !== b.changesRecommendation) {
+        return a.changesRecommendation ? -1 : 1;
+      }
+
+      const impactA = Math.abs(a.fitDelta) + Math.abs(a.certaintyDelta);
+      const impactB = Math.abs(b.fitDelta) + Math.abs(b.certaintyDelta);
+      return impactB - impactA;
+    });
+
+    const response: SensitivityAnalysisResponse = {
+      baseRecommendation: base.recommendation,
+      baseTopMatchPercentage: base.topMatchPercentage,
+      baseConfidenceScore: base.confidenceScore,
+      totalVariationsTested,
+      recommendationSwitches: changes.filter(c => c.changesRecommendation).length,
+      changes: changes.slice(0, 20)
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Error generating sensitivity analysis:', error);
+    res.status(500).json({
+      error: 'Internal server error occurred while generating sensitivity analysis.'
     });
   }
 };
