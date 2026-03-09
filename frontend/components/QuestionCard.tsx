@@ -28,6 +28,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
 }) => {
   return (
     <fieldset className={`bg-white rounded-xl md:rounded-2xl shadow-xl p-6 md:p-8 border border-gray-100 ${className}`} aria-describedby={`${question.id}-hint`}>
+      <legend className="sr-only">{question.text}</legend>
       {question.category && (
         <div className="mb-4 md:mb-6">
           <span className="inline-block bg-gradient-to-r from-purple-100 to-blue-100 text-purple-800 text-xs font-bold px-3 md:px-4 py-1 md:py-2 rounded-full shadow-sm">
@@ -36,9 +37,9 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
         </div>
       )}
 
-      <legend className="text-xl md:text-2xl font-bold text-gray-900 mb-6 md:mb-8 leading-relaxed">
+      <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-6 md:mb-8 leading-relaxed">
         {question.text}
-      </legend>
+      </h2>
       <p id={`${question.id}-hint`} className="sr-only">Use Tab to focus options, then press Space or Enter to choose.</p>
 
       <div className="space-y-3 md:space-y-4" role="radiogroup" aria-label={question.text}>
