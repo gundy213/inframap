@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Infra.io favicon">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square background with gradient -->
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+
+  <!-- Capital I -->
+  <rect x="22" y="16" width="20" height="4" rx="2" fill="#ffffff"/>
+  <rect x="28" y="16" width="8" height="32" rx="2" fill="#ffffff"/>
+  <rect x="22" y="44" width="20" height="4" rx="2" fill="#ffffff"/>
+</svg>
