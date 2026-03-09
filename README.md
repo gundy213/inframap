@@ -1,4 +1,4 @@
-# infra.io
+# inframap
 
 A rule-based infrastructure recommendation platform that analyzes questionnaire responses and suggests the best-fit architecture across Azure, AWS, and GCP.
 
