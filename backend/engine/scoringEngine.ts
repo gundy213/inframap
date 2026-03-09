@@ -1,0 +1,202 @@
+import {
+  ArchitectureType,
+  ArchitectureScores,
+  QuestionnaireResponse,
+  ScoringResult,
+  RecommendationResult,
+  Question
+} from '../../shared/types';
+import { sampleQuestions } from '../../shared/questions';
+
+/**
+ * Scoring Engine for Infrastructure Recommendations
+ *
+ * This engine calculates scores for different Azure architecture types
+ * based on user responses to the questionnaire.
+ */
+
+export class ScoringEngine {
+  private questions: Question[];
+
+  constructor(questions: Question[] = sampleQuestions) {
+    this.questions = questions;
+  }
+
+  /**
+   * Calculate scores for all architecture types based on responses
+   */
+  calculateScores(responses: QuestionnaireResponse[]): ArchitectureScores {
+    const initialScores: ArchitectureScores = {
+      Kubernetes: 0,
+      'Azure App Services': 0,
+      'Azure Container Apps': 0,
+      Serverless: 0,
+      'Virtual Machines': 0,
+      'AWS Elastic Beanstalk': 0,
+      'AWS ECS/Fargate': 0,
+      'AWS Lambda': 0,
+      'AWS EC2': 0,
+      'AWS EKS': 0,
+      'GCP App Engine': 0,
+      'GCP Cloud Run': 0,
+      'GCP Cloud Functions': 0,
+      'GCP Compute Engine': 0,
+      'GCP GKE': 0
+    };
+
+    return responses.reduce((scores, response) => {
+      const question = this.questions.find(q => q.id === response.questionId);
+      if (!question) return scores;
+
+      const selectedOption = question.options.find(opt => opt.id === response.selectedAnswerId);
+      if (!selectedOption) return scores;
+
+      // Add scores from the selected option
+      Object.entries(selectedOption.scores).forEach(([architecture, score]) => {
+        scores[architecture as ArchitectureType] += score;
+      });
+
+      return scores;
+    }, initialScores);
+  }
+
+  /**
+   * Convert raw scores to percentage-based results
+   */
+  private scoresToResults(scores: ArchitectureScores): ScoringResult[] {
+    const sortedEntries = (Object.entries(scores) as [ArchitectureType, number][])
+      .map(([architecture, score]) => ({ architecture, score }))
+      .sort((a, b) => b.score - a.score);
+
+    // Absolute percentage: score vs a realistic "strong fit" benchmark (3 pts/question)
+    const strongFitBenchmark = this.questions.length * 3;
+
+    return sortedEntries.map(entry => ({
+      architecture: entry.architecture,
+      score: entry.score,
+      percentage: strongFitBenchmark > 0
+        ? Math.min(100, Math.max(0, Math.round((entry.score / strongFitBenchmark) * 100)))
+        : 0
+    }));
+  }
+
+  /**
+   * Generate recommendation based on responses
+   */
+  generateRecommendation(responses: QuestionnaireResponse[]): RecommendationResult {
+    const scores = this.calculateScores(responses);
+    const results = this.scoresToResults(scores);
+    const totalScore = Object.values(scores).reduce((sum, score) => sum + score, 0);
+
+    return {
+      topRecommendation: results[0].architecture,
+      scores: results,
+      totalScore
+    };
+  }
+
+  /**
+   * Get detailed scoring breakdown for analysis
+   */
+  getDetailedScoring(responses: QuestionnaireResponse[]): {
+    questionBreakdown: Array<{
+      questionId: string;
+      questionText: string;
+      selectedAnswer: string;
+      scores: Partial<ArchitectureScores>;
+    }>;
+    totalScores: ArchitectureScores;
+    recommendation: RecommendationResult;
+  } {
+    const questionBreakdown = responses.map(response => {
+      const question = this.questions.find(q => q.id === response.questionId)!;
+      const selectedOption = question.options.find(opt => opt.id === response.selectedAnswerId)!;
+
+      return {
+        questionId: response.questionId,
+        questionText: question.text,
+        selectedAnswer: selectedOption.text,
+        scores: selectedOption.scores
+      };
+    });
+
+    const totalScores = this.calculateScores(responses);
+    const recommendation = this.generateRecommendation(responses);
+
+    return {
+      questionBreakdown,
+      totalScores,
+      recommendation
+    };
+  }
+}
+
+/**
+ * Utility functions for scoring analysis
+ */
+export const ScoringUtils = {
+  /**
+   * Get architecture descriptions for recommendations
+   */
+  getArchitectureDescription(architecture: ArchitectureType): string {
+    const descriptions: Record<ArchitectureType, string> = {
+      Kubernetes: 'Container orchestration platform ideal for complex, distributed applications with advanced scaling and management needs.',
+      'Azure App Services': 'Fully managed platform for web applications and APIs, offering simplicity and quick deployment.',
+      'Azure Container Apps': 'Serverless container service that provides a Kubernetes-like experience without managing infrastructure.',
+      Serverless: 'Event-driven computing model where you pay only for execution time, perfect for variable workloads.',
+      'Virtual Machines': 'Full control over your infrastructure with traditional virtual machine deployments.',
+      'AWS Elastic Beanstalk': 'Managed platform for deploying web applications on AWS with minimal infrastructure management.',
+      'AWS ECS/Fargate': 'Container service on AWS that offers serverless compute for containers with minimal orchestration overhead.',
+      'AWS Lambda': 'Event-driven serverless compute on AWS ideal for bursty or lightweight workloads.',
+      'AWS EC2': 'Raw virtual machine instances on AWS for full control over compute resources.',
+      'AWS EKS': 'Managed Kubernetes on AWS for complex container orchestration and scaling.',
+      'GCP App Engine': 'Fully managed platform for building scalable web applications on GCP.',
+      'GCP Cloud Run': 'Serverless containers on GCP for running stateless containers with automatic scaling.',
+      'GCP Cloud Functions': 'Event-driven serverless compute on GCP for lightweight functions and integrations.',
+      'GCP Compute Engine': 'Virtual machines on GCP offering full control over compute resources.',
+      'GCP GKE': 'Managed Kubernetes on GCP for container orchestration and advanced scaling.'
+    };
+
+    return descriptions[architecture];
+  },
+
+  /**
+   * Validate questionnaire responses
+   */
+  validateResponses(responses: QuestionnaireResponse[], questions: Question[]): {
+    isValid: boolean;
+    errors: string[];
+  } {
+    const errors: string[] = [];
+    const questionIds = new Set(questions.map(q => q.id));
+    const responseQuestionIds = new Set(responses.map(r => r.questionId));
+
+    // Check for missing questions
+    const missingQuestions = [...questionIds].filter(id => !responseQuestionIds.has(id));
+    if (missingQuestions.length > 0) {
+      errors.push(`Missing responses for questions: ${missingQuestions.join(', ')}`);
+    }
+
+    // Check for invalid question IDs
+    const invalidQuestions = [...responseQuestionIds].filter(id => !questionIds.has(id));
+    if (invalidQuestions.length > 0) {
+      errors.push(`Invalid question IDs: ${invalidQuestions.join(', ')}`);
+    }
+
+    // Check for invalid answer IDs
+    responses.forEach(response => {
+      const question = questions.find(q => q.id === response.questionId);
+      if (question) {
+        const validAnswerIds = question.options.map(opt => opt.id);
+        if (!validAnswerIds.includes(response.selectedAnswerId)) {
+          errors.push(`Invalid answer ID '${response.selectedAnswerId}' for question '${response.questionId}'`);
+        }
+      }
+    });
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+};
