@@ -1,14 +1,14 @@
 # infra.io
 
-A rule-based recommendation engine that analyzes questionnaire responses to recommend optimal Azure infrastructure architectures.
+A rule-based infrastructure recommendation platform that analyzes questionnaire responses and suggests the best-fit architecture across Azure, AWS, and GCP.
 
 ## Architecture Options
 
-- **Kubernetes**: Container orchestration for complex, distributed applications
-- **Azure App Services**: Fully managed platform for web apps and APIs
-- **Azure Container Apps**: Serverless containers without Kubernetes management
-- **Serverless**: Event-driven computing with pay-per-use pricing
-- **Virtual Machines**: Full infrastructure control with traditional VMs
+- Kubernetes, AWS EKS, GCP GKE
+- Azure App Services / Container Apps
+- AWS Elastic Beanstalk / ECS Fargate / Lambda / EC2
+- GCP App Engine / Cloud Run / Cloud Functions / Compute Engine
+- Virtual Machines and provider-managed VM variants
 
 ## Quick Start
 
@@ -28,7 +28,7 @@ npm run install:all
 npm run dev
 ```
 
-This will start both the backend API (port 3001) and frontend React app (port 5173).
+This starts both the backend API (port 3001) and frontend Vite app (port 5173).
 
 ### Access the Application
 
@@ -57,7 +57,9 @@ Generate infrastructure recommendations based on questionnaire responses.
 ```json
 {
   "recommendation": "Kubernetes",
-  "confidenceScore": 87,
+  "topMatchPercentage": 83,
+  "confidenceScore": 53,
+  "confidenceLevel": "Medium",
   "reasoning": ["Detailed reasoning points..."],
   "alternatives": [...]
 }
@@ -71,7 +73,9 @@ Get the list of available questions.
 ```typescript
 interface RecommendationOutput {
   recommendation: ArchitectureType;    // Top recommended architecture
+  topMatchPercentage: number;          // Absolute fit score (0-100)
   confidenceScore: number;             // 0-100 confidence percentage
+  confidenceLevel: 'Low' | 'Medium' | 'High';
   reasoning: string[];                 // Detailed reasoning points
   alternatives: Array<{                // Alternative options
     architecture: ArchitectureType;
@@ -93,11 +97,9 @@ The engine applies configurable business rules for:
 - Architecture-specific bonuses
 - Cost efficiency adjustments
 
-### 3. Confidence Calculation
-Confidence scores are calculated based on:
-- Score separation (how much better the top choice is)
-- Response completeness
-- Score distribution variance
+### 3. Fit and Confidence
+- **Fit score (`topMatchPercentage`)**: absolute score of the winner vs a strong-fit benchmark.
+- **Decision certainty (`confidenceScore`)**: certainty of the decision based on winner strength, dominance over runner-up, answer consistency, and completeness.
 
 ### 4. Reasoning Generation
 Detailed reasoning includes:
@@ -221,6 +223,25 @@ To run the basic validation tests:
 cd backend/engine
 npx ts-node test.ts
 ```
+
+## Docker Images
+
+CI publishes Docker images with semantic version and commit SHA tags:
+
+- `docker.io/<dockerhub-user>/infra-recommender-frontend:<app-version>`
+- `docker.io/<dockerhub-user>/infra-recommender-frontend:<git-sha>`
+- `docker.io/<dockerhub-user>/infra-recommender-frontend:latest`
+- `docker.io/<dockerhub-user>/infra-recommender-backend:<app-version>`
+- `docker.io/<dockerhub-user>/infra-recommender-backend:<git-sha>`
+- `docker.io/<dockerhub-user>/infra-recommender-backend:latest`
+
+`<app-version>` comes from the root `package.json` `version` field.
+
+## Cloud Run Notes
+
+- Frontend nginx container listens on port `8080`.
+- Deploy Cloud Run frontend with `--port 8080`.
+- Prefer deploying immutable image tags (`:<app-version>` or `:<git-sha>`) instead of `:latest`.
 
 ## Deployment
 
