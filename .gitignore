@@ -1,10 +1,16 @@
 # Dependencies
 node_modules/
-**/node_modules/
+package-lock.json
+npm-shrinkwrap.json
 
 # Build outputs
 dist/
-**/dist/
+*.js
+*.js.map
+*.d.ts
+*.d.ts.map
+backend/dist/
+frontend/dist/
 
 # IDE
 .vscode/
@@ -26,7 +32,3 @@ npm-debug.log*
 .env
 .env.local
 .env.*.local
-*.env
-
-# Docker artifacts
-*.tar
