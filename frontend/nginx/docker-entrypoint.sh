@@ -1,7 +1,8 @@
 #!/bin/sh
 set -e
 
-# Substitute only BACKEND_URL, leaving nginx variables ($uri, $host, etc.) untouched
-envsubst '${BACKEND_URL}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
+# Start nginx in the background
+nginx -g 'daemon off;' &
 
-exec nginx -g 'daemon off;'
+# Run Node in the foreground — container exits if Node crashes
+exec node /app/dist/backend/server.js
