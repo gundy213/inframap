@@ -210,8 +210,8 @@ export class RecommendationEngine {
     const reasoning: string[] = [];
 
     switch (architecture) {
-      case 'Kubernetes':
-        reasoning.push('Kubernetes is ideal for complex, containerized applications requiring advanced orchestration and scaling capabilities.');
+      case 'Azure AKS':
+        reasoning.push('Azure AKS is ideal for complex, containerized applications requiring advanced orchestration and scaling capabilities.');
         if (this.hasHighComplexityAnswers(questionBreakdown)) {
           reasoning.push('Your responses indicate a need for sophisticated container management and service orchestration.');
         }
@@ -392,7 +392,7 @@ export class RecommendationEngine {
   private getComplexityComparison(alt: ArchitectureType, primary: ArchitectureType): string | null {
     const complexityLevels: Record<ArchitectureType, number> = {
       'Virtual Machines': 5,
-      Kubernetes: 4,
+      'Azure AKS': 4,
       'Azure Container Apps': 2,
       'Azure App Services': 1,
       Serverless: 1,
@@ -425,7 +425,7 @@ export class RecommendationEngine {
    */
   private getUseCaseAdvantages(architecture: ArchitectureType): string[] {
     const advantages: Record<ArchitectureType, string[]> = {
-      Kubernetes: [
+      'Azure AKS': [
         'Best for complex microservices architectures',
         'Excellent for applications requiring advanced scaling policies'
       ],
@@ -496,7 +496,7 @@ export class RecommendationEngine {
    */
   private getArchitecturePros(architecture: ArchitectureType): string[] {
     const pros: Record<ArchitectureType, string[]> = {
-      Kubernetes: [
+      'Azure AKS': [
         'Excellent scalability and orchestration',
         'Vendor-neutral and highly flexible',
         'Strong community and ecosystem',
@@ -596,7 +596,7 @@ export class RecommendationEngine {
    */
   private getArchitectureCons(architecture: ArchitectureType): string[] {
     const cons: Record<ArchitectureType, string[]> = {
-      Kubernetes: [
+      'Azure AKS': [
         'Steep learning curve',
         'Complex operational overhead',
         'Higher management costs',
@@ -708,7 +708,7 @@ export class RecommendationEngine {
       'Virtual Machines': 'High',
       'AWS EC2': 'High',
       'GCP Compute Engine': 'High',
-      Kubernetes: 'High',
+      'Azure AKS': 'High',
       'AWS EKS': 'High',
       'GCP GKE': 'High'
     };
@@ -733,7 +733,7 @@ export class RecommendationEngine {
       'Virtual Machines': '$200-2000+/month',
       'AWS EC2': '$200-2000+/month',
       'GCP Compute Engine': '$200-2000+/month',
-      Kubernetes: '$500-5000+/month',
+      'Azure AKS': '$500-5000+/month',
       'AWS EKS': '$500-5000+/month',
       'GCP GKE': '$500-5000+/month'
     };

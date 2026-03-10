@@ -280,62 +280,402 @@ const Questionnaire: React.FC = () => {
 
   const buildReportPdf = (scenarioResult: RecommendationResult, scenarioResponses: QuestionnaireResponse[]) => {
     const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const margin = 40;
-    const maxWidth = pageWidth - (margin * 2);
-    let y = 48;
+    const PW = pdf.internal.pageSize.getWidth();
+    const PH = pdf.internal.pageSize.getHeight();
+    const M = 40;
 
-    const addLine = (text: string, size = 11, bold = false, gap = 16) => {
+    // ── Colour helpers ──────────────────────────────────────────────────────
+    type RGB = [number, number, number];
+    const NAV:    RGB = [15,  23,  42];
+    const BLUE:   RGB = [59,  130, 246];
+    const INDIGO: RGB = [99,  102, 241];
+    const GREEN:  RGB = [16,  185, 129];
+    const AMBER:  RGB = [245, 158, 11];
+    const RED:    RGB = [239, 68,  68];
+    const WHITE:  RGB = [255, 255, 255];
+    const SLATE:  RGB = [248, 250, 252];
+    const MUTED:  RGB = [100, 116, 139];
+    const BORDER: RGB = [226, 232, 240];
+    const CARD:   RGB = [241, 245, 249];
+
+    const fc = (c: RGB) => pdf.setFillColor(c[0], c[1], c[2]);
+    const dc = (c: RGB) => pdf.setDrawColor(c[0], c[1], c[2]);
+    const tc = (c: RGB) => pdf.setTextColor(c[0], c[1], c[2]);
+    const ft = (size: number, bold = false) => {
       pdf.setFont('helvetica', bold ? 'bold' : 'normal');
       pdf.setFontSize(size);
-      const lines = pdf.splitTextToSize(text, maxWidth);
-      lines.forEach((line: string) => {
-        if (y > 790) {
-          pdf.addPage();
-          y = 48;
-        }
-        pdf.text(line, margin, y);
-        y += gap;
-      });
     };
 
-    addLine('Infrastructure Recommendation Report', 18, true, 22);
-    addLine(`Generated: ${new Date().toLocaleString()}`, 10, false, 18);
-    y += 4;
+    // ── Reusable components ─────────────────────────────────────────────────
+    const addFooter = () => {
+      fc(NAV); pdf.rect(0, PH - 22, PW, 22, 'F');
+      tc(WHITE); ft(8);
+      pdf.text('InfraMap  \u00B7  Infrastructure Architecture Recommender', M, PH - 8);
+      pdf.text(`Page ${pdf.getNumberOfPages()}`, PW - M, PH - 8, { align: 'right' });
+      tc(NAV);
+    };
 
-    addLine('Recommendation Summary', 14, true, 20);
-    addLine(`Recommendation: ${scenarioResult.recommendation}`);
-    addLine(`Fit Score: ${scenarioResult.topMatchPercentage}%`);
-    addLine(`Decision Certainty: ${scenarioResult.confidenceLevel} (${scenarioResult.confidenceScore}%)`);
-    y += 4;
+    const pageHeader = (title: string) => {
+      fc(BLUE); pdf.rect(0, 0, PW, 34, 'F');
+      // Small logo mark
+      drawLogo(M, 7, 20, 3, 2);
+      // Section title
+      ft(12, true); pdf.text(title, M + 28, 21);
+      tc(NAV);
+    };
 
-    addLine('Why This Recommendation', 14, true, 20);
-    scenarioResult.reasoning.forEach((reason, idx) => addLine(`${idx + 1}. ${reason}`));
-    y += 4;
+    const scoreBar = (x: number, y: number, w: number, h: number, pct: number, color: RGB) => {
+      fc(BORDER); dc(BORDER); pdf.setLineWidth(0);
+      pdf.roundedRect(x, y, w, h, h / 2, h / 2, 'F');
+      if (pct > 0) {
+        fc(color);
+        pdf.roundedRect(x, y, Math.max(w * (pct / 100), h), h, h / 2, h / 2, 'F');
+      }
+    };
 
-    addLine('Alternatives', 14, true, 20);
+    const pill = (x: number, y: number, label: string, bg: RGB, fg: RGB = WHITE) => {
+      fc(bg); ft(8, true);
+      const tw = pdf.getTextWidth(label);
+      pdf.roundedRect(x, y - 10, tw + 14, 14, 7, 7, 'F');
+      tc(fg); pdf.text(label, x + 7, y);
+      tc(NAV);
+    };
+
+    const confidenceColor = (level: string): RGB =>
+      level === 'High' ? GREEN : level === 'Medium' ? AMBER : RED;
+
+    // Draws the favicon-matching logo mark: purple→blue gradient background + serif "I"
+    const drawLogo = (ox: number, oy: number, outerSize: number, outerR: number, innerInset: number) => {
+      const ix = ox + innerInset, iy = oy + innerInset;
+      const sz = outerSize - innerInset * 2;
+      const innerR = Math.max(2, Math.round(sz * 14 / 64));
+      // White outer frame
+      fc(WHITE); pdf.roundedRect(ox, oy, outerSize, outerSize, outerR, outerR, 'F');
+      // Gradient: purple #a855f7 (168,85,247) → blue #3b82f6 (59,130,235), left to right
+      const strips = Math.ceil(sz);
+      for (let i = 0; i < strips; i++) {
+        const t = strips > 1 ? i / (strips - 1) : 0;
+        fc([Math.round(168 - 109 * t), Math.round(85 + 45 * t), Math.round(247 - 12 * t)] as RGB);
+        pdf.rect(ix + i, iy, 1.5, sz, 'F');
+      }
+      // White serif "I": top bar / stem / bottom bar, proportional to favicon 64×64 viewBox
+      fc(WHITE);
+      const s = sz / 64;
+      const bh = Math.max(1, 4 * s), bw = 20 * s;
+      const stemW = 8 * s, stemH = 32 * s;
+      const barR = Math.min(bh / 2, innerR);
+      const stemR = Math.min(stemW / 2, innerR);
+      pdf.roundedRect(ix + 22 * s, iy + 16 * s, bw, bh, barR, barR, 'F');
+      pdf.roundedRect(ix + 28 * s, iy + 16 * s, stemW, stemH, stemR, stemR, 'F');
+      pdf.roundedRect(ix + 22 * s, iy + 44 * s, bw, bh, barR, barR, 'F');
+    };
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // PAGE 1 — COVER
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // Header band
+    fc(NAV); pdf.rect(0, 0, PW, 108, 'F');
+    fc(BLUE); pdf.rect(0, 103, PW, 5, 'F');
+
+    // Logo mark — gradient icon matching favicon
+    drawLogo(M, 20, 42, 6, 4);
+
+    // Brand name + subtitle
+    ft(22, true); tc(WHITE);
+    pdf.text('InfraMap', M + 54, 44);
+    ft(11); tc([147, 197, 253] as RGB);
+    pdf.text('Architecture Recommendation Report', M + 54, 62);
+    ft(9); tc([148, 163, 184] as RGB);
+    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    pdf.text(`Generated ${dateStr}`, M + 54, 80);
+
+    // ── Hero card ────────────────────────────────────────────────────────────
+    const cX = M + 8, cW = PW - (M + 8) * 2, cY = 126, cH = 190;
+    // Shadow
+    fc([203, 213, 225] as RGB);
+    pdf.roundedRect(cX + 3, cY + 3, cW, cH, 10, 10, 'F');
+    // Card
+    fc(WHITE); dc(BORDER); pdf.setLineWidth(0.5);
+    pdf.roundedRect(cX, cY, cW, cH, 10, 10, 'FD');
+    // Blue left accent bar
+    fc(BLUE); pdf.roundedRect(cX, cY, 7, cH, 4, 4, 'F');
+    pdf.rect(cX + 3, cY, 4, cH, 'F');
+
+    // Confidence panel x position — declared here so it can be used as max-width boundary below
+    const cpX = cX + cW - 136;
+
+    tc(MUTED); ft(8, true);
+    pdf.text('PRIMARY RECOMMENDATION', cX + 22, cY + 24);
+
+    tc(NAV); ft(24, true);
+    // Constrain to left content area (keep clear of confidence panel)
+    const recMaxW = cpX - (cX + 22) - 12;
+    const recLines: string[] = pdf.splitTextToSize(scenarioResult.recommendation, recMaxW);
+    pdf.text(recLines[0], cX + 22, cY + 56);
+
+    // Fit score
+    tc(MUTED); ft(8);
+    pdf.text('Fit Score', cX + 22, cY + 80);
+    tc(BLUE); ft(20, true);
+    pdf.text(`${scenarioResult.topMatchPercentage}%`, cX + 22, cY + 103);
+    scoreBar(cX + 22, cY + 110, cW - 190, 9, scenarioResult.topMatchPercentage, BLUE);
+
+    // Confidence panel (right side)
+    fc(CARD); pdf.roundedRect(cpX, cY + 64, 120, 96, 8, 8, 'F');
+    tc(MUTED); ft(7, true);
+    pdf.text('DECISION CERTAINTY', cpX + 10, cY + 80);
+    const confC = confidenceColor(scenarioResult.confidenceLevel);
+    tc(confC); ft(22, true);
+    pdf.text(`${scenarioResult.confidenceScore}%`, cpX + 10, cY + 108);
+    pill(cpX + 10, cY + 138, scenarioResult.confidenceLevel.toUpperCase(), confC);
+
+    // Footer hint inside card
+    tc(MUTED); ft(8);
+    pdf.text(`Analysed ${scenarioResponses.length} of ${sampleQuestions.length} questions`, cX + 22, cY + 176);
+
+    // ── Three stat tiles ─────────────────────────────────────────────────────
+    const tY = cY + cH + 18;
+    const tW = (PW - M * 2 - 16) / 3;
+    const tile = (i: number, label: string, value: string, sub: string, color: RGB) => {
+      const tX = M + i * (tW + 8);
+      fc(CARD); dc(BORDER); pdf.setLineWidth(0.5);
+      pdf.roundedRect(tX, tY, tW, 72, 6, 6, 'FD');
+      fc(color); pdf.roundedRect(tX, tY, tW, 5, 3, 3, 'F');
+      pdf.rect(tX, tY + 2, tW, 3, 'F');
+      tc(MUTED); ft(7, true);
+      pdf.text(label.toUpperCase(), tX + 12, tY + 22);
+      tc(NAV); ft(18, true);
+      pdf.text(value, tX + 12, tY + 48);
+      tc(MUTED); ft(8);
+      pdf.text(sub, tX + 12, tY + 63);
+    };
+    tile(0, 'Alternatives Found',  `${scenarioResult.alternatives.length}`, 'other suitable architectures', INDIGO);
+    tile(1, 'Reasoning Points',    `${scenarioResult.reasoning.length}`,    'factors informing this choice', GREEN);
+    tile(2, 'Questions Answered',  `${scenarioResponses.length}`,           `of ${sampleQuestions.length} total`, BLUE);
+
+    addFooter();
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // PAGE 2 — RECOMMENDATION DETAIL + ALTERNATIVES
+    // ══════════════════════════════════════════════════════════════════════════
+    pdf.addPage();
+    pageHeader('Recommendation Detail');
+    let y = 52;
+
+    // Section: Why this recommendation
+    tc(NAV); ft(13, true); pdf.text('Why This Recommendation', M, y); y += 5;
+    fc(BLUE); pdf.rect(M, y, 170, 2, 'F'); y += 14;
+
+    scenarioResult.reasoning.forEach((reason) => {
+      if (y > PH - 100) { addFooter(); pdf.addPage(); pageHeader('Recommendation Detail'); y = 52; }
+      fc(BLUE); pdf.circle(M + 5, y - 3, 3.5, 'F');
+      tc(NAV); ft(10);
+      const lines: string[] = pdf.splitTextToSize(reason, PW - M * 2 - 20);
+      lines.forEach((line, i) => { pdf.text(line, M + 16, y + i * 13); });
+      y += lines.length * 13 + 7;
+    });
+
+    y += 18;
+
+    // Section: Alternatives
+    if (y > PH - 220) { addFooter(); pdf.addPage(); pageHeader('Alternative Architectures'); y = 52; }
+    tc(NAV); ft(13, true); pdf.text('Alternative Architectures', M, y); y += 5;
+    fc(INDIGO); pdf.rect(M, y, 192, 2, 'F'); y += 14;
+
     scenarioResult.alternatives.forEach((alt, idx) => {
-      addLine(`${idx + 1}. ${alt.architecture} - Fit ${alt.percentage}% (${alt.score} pts), Complexity ${alt.complexity}, Cost ${alt.estimatedCost}`);
-    });
-    y += 4;
+      const aH = 94;
+      if (y + aH > PH - 60) { addFooter(); pdf.addPage(); pageHeader('Alternative Architectures'); y = 52; }
 
-    addLine('Inputs', 14, true, 20);
-    scenarioResponses.forEach(response => {
-      const question = sampleQuestions.find(q => q.id === response.questionId);
-      addLine(`- ${question?.text ?? response.questionId}: ${answerText(response.questionId, response.selectedAnswerId)}`);
+      const rankColors: RGB[] = [INDIGO, BLUE, MUTED];
+      const rankC = rankColors[idx] ?? MUTED;
+
+      // Card + shadow
+      fc([203, 213, 225] as RGB); pdf.roundedRect(M + 2, y + 2, PW - M * 2, aH, 6, 6, 'F');
+      fc(CARD); dc(BORDER); pdf.setLineWidth(0.5);
+      pdf.roundedRect(M, y, PW - M * 2, aH, 6, 6, 'FD');
+
+      // Rank stripe
+      fc(rankC); pdf.roundedRect(M, y, 30, aH, 4, 4, 'F');
+      pdf.rect(M + 14, y, 16, aH, 'F');
+      tc(WHITE); ft(14, true);
+      pdf.text(`${idx + 2}`, M + 9, y + aH / 2 + 6);
+
+      // Right metadata panel — fixed 152pt from right edge
+      const metaX = PW - M - 152;
+      const metaColW = 72;
+      tc(MUTED); ft(7, true);
+      pdf.text('COMPLEXITY', metaX + 4, y + 20);
+      pdf.text('EST. COST', metaX + metaColW + 4, y + 20);
+      tc(NAV); ft(10, true);
+      pdf.text(alt.complexity, metaX + 4, y + 33);
+      ft(9);
+      const costLines: string[] = pdf.splitTextToSize(alt.estimatedCost, metaColW - 4);
+      pdf.text(costLines[0], metaX + metaColW + 4, y + 33);
+
+      // Name — clipped to left content area
+      tc(NAV); ft(11, true);
+      const nameMaxW = metaX - (M + 38) - 8;
+      const nameLines: string[] = pdf.splitTextToSize(alt.architecture, nameMaxW);
+      pdf.text(nameLines[0], M + 38, y + 20);
+
+      // Fit bar — stays within left content area, % label before metadata
+      const barW = metaX - (M + 38) - 48;
+      tc(MUTED); ft(8);
+      pdf.text('Fit Score', M + 38, y + 36);
+      scoreBar(M + 38, y + 40, barW, 7, alt.percentage, rankC);
+      tc(rankC); ft(10, true);
+      pdf.text(`${alt.percentage}%`, M + 38 + barW + 6, y + 47);
+
+      // First reason — clipped to left content area
+      if (alt.reasons.length > 0) {
+        tc(MUTED); ft(8);
+        const rLine: string[] = pdf.splitTextToSize(alt.reasons[0], nameMaxW);
+        pdf.text(rLine[0], M + 38, y + 76);
+      }
+
+      y += aH + 10;
     });
 
+    addFooter();
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // PAGE 3 — YOUR INPUTS
+    // ══════════════════════════════════════════════════════════════════════════
+    pdf.addPage();
+    pageHeader('Your Inputs');
+    y = 52;
+
+    tc(NAV); ft(13, true); pdf.text('Your Questionnaire Answers', M, y); y += 5;
+    fc(BLUE); pdf.rect(M, y, 200, 2, 'F'); y += 16;
+
+    scenarioResponses.forEach((response, idx) => {
+      if (y + 38 > PH - 60) { addFooter(); pdf.addPage(); pageHeader('Your Inputs (cont.)'); y = 52; }
+      const rowBg: RGB = idx % 2 === 0 ? WHITE : SLATE;
+      fc(rowBg); dc(BORDER); pdf.setLineWidth(0.3);
+      pdf.rect(M, y, PW - M * 2, 38, 'FD');
+
+      // Number badge
+      fc(BLUE); pdf.roundedRect(M + 8, y + 9, 18, 18, 3, 3, 'F');
+      tc(WHITE); ft(8, true); pdf.text(`${idx + 1}`, M + 13, y + 21);
+
+      // Question — clip to available row width
+      const q = sampleQuestions.find(qq => qq.id === response.questionId);
+      const rowTextW = PW - M * 2 - 44;
+      tc(MUTED); ft(8);
+      const qLines: string[] = pdf.splitTextToSize(q?.text ?? response.questionId, rowTextW);
+      pdf.text(qLines[0], M + 34, y + 15);
+      // Answer
+      tc(NAV); ft(10, true);
+      const aLines: string[] = pdf.splitTextToSize(answerText(response.questionId, response.selectedAnswerId), rowTextW);
+      pdf.text(aLines[0], M + 34, y + 29);
+
+      y += 38;
+    });
+
+    addFooter();
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // PAGE 4 — SENSITIVITY ANALYSIS (optional)
+    // ══════════════════════════════════════════════════════════════════════════
     if (sensitivity) {
-      y += 4;
-      addLine('Sensitivity Analysis', 14, true, 20);
-      addLine(`Variations tested: ${sensitivity.totalVariationsTested}`);
-      addLine(`Recommendation switches: ${sensitivity.recommendationSwitches}`);
-      sensitivity.changes
-        .filter(change => change.changesRecommendation)
-        .slice(0, 5)
-        .forEach((change, idx) => {
-          addLine(`${idx + 1}. Change "${change.questionText}" from "${change.currentAnswerText}" to "${change.newAnswerText}" -> ${change.newRecommendation} (fit ${change.newTopMatchPercentage}%, certainty ${change.newConfidenceScore}%)`);
+      pdf.addPage();
+      pageHeader('Sensitivity Analysis');
+      y = 52;
+
+      // Stat tiles row
+      const sW = (PW - M * 2 - 16) / 3;
+      const statTile = (i: number, label: string, value: string, color: RGB) => {
+        const sX = M + i * (sW + 8);
+        const tileLabelW = sW - 20; // conservative inner width
+        fc(color); pdf.roundedRect(sX, y, sW, 60, 6, 6, 'F');
+        tc(WHITE); ft(20, true);
+        const valLines: string[] = pdf.splitTextToSize(value, tileLabelW);
+        pdf.text(valLines[0], sX + 10, y + 36);
+        ft(8);
+        const lblLines: string[] = pdf.splitTextToSize(label, tileLabelW);
+        pdf.text(lblLines[0], sX + 10, y + 51);
+      };
+      const stability = sensitivity.totalVariationsTested > 0
+        ? Math.round((1 - sensitivity.recommendationSwitches / sensitivity.totalVariationsTested) * 100)
+        : 100;
+      statTile(0, 'Variations Tested',           `${sensitivity.totalVariationsTested}`,   BLUE);
+      statTile(1, 'Recommendation Switches',      `${sensitivity.recommendationSwitches}`,  AMBER);
+      statTile(2, 'Recommendation Stability',     `${stability}%`, sensitivity.recommendationSwitches === 0 ? GREEN : INDIGO);
+      y += 78;
+
+      // Safe inner text width for all cards — text starts at M+16, ends at PW-M-16
+      const cardTextX = M + 16;
+      const cardTextW = PW - M * 2 - 32;
+
+      const switchChanges = sensitivity.changes.filter(c => c.changesRecommendation).slice(0, 6);
+
+      if (switchChanges.length === 0) {
+        // Stable callout banner
+        fc(GREEN); pdf.roundedRect(M, y, PW - M * 2, 64, 8, 8, 'F');
+        fc([52, 211, 153] as RGB); pdf.roundedRect(M, y, PW - M * 2, 6, 4, 4, 'F');
+        pdf.rect(M, y + 3, PW - M * 2, 3, 'F');
+        tc(WHITE); ft(13, true);
+        const bannerW = PW - M * 2 - 40;
+        const stableLines: string[] = pdf.splitTextToSize('Recommendation is highly stable', bannerW);
+        pdf.text(stableLines[0], M + 20, y + 30);
+        ft(10);
+        const subLines: string[] = pdf.splitTextToSize('No single answer change would alter the primary recommendation.', bannerW);
+        pdf.text(subLines[0], M + 20, y + 48);
+      } else {
+        tc(NAV); ft(12, true);
+        const headLines: string[] = pdf.splitTextToSize('Answers That Would Change the Recommendation', PW - M * 2);
+        pdf.text(headLines[0], M, y); y += 5;
+        fc(AMBER); pdf.rect(M, y, 282, 2, 'F'); y += 14;
+
+        switchChanges.forEach((change) => {
+          // Measure arrow text BEFORE drawing to get actual line count for dynamic card height
+          ft(9, true);
+          const arrowText = `"${change.currentAnswerText}"  ->  "${change.newAnswerText}"`;
+          const arrowLines: string[] = pdf.splitTextToSize(arrowText, cardTextW);
+          const arrowLineCount = Math.min(arrowLines.length, 2);
+          // Card height: 14 (question) + 14 (arrow lines × 13) + 16 (rec row) + 16 (stats) + top/bottom pads
+          const chH = 14 + (arrowLineCount * 13) + 16 + 16 + 18;
+
+          if (y + chH > PH - 60) { addFooter(); pdf.addPage(); pageHeader('Sensitivity Analysis (cont.)'); y = 52; }
+
+          fc(CARD); dc([253, 224, 71] as RGB); pdf.setLineWidth(0.8);
+          pdf.roundedRect(M, y, PW - M * 2, chH, 6, 6, 'FD');
+          fc(AMBER); pdf.roundedRect(M, y, 6, chH, 3, 3, 'F');
+          pdf.rect(M + 3, y, 3, chH, 'F');
+
+          // Question label — 1 line, clipped
+          tc(MUTED); ft(8);
+          const qLines: string[] = pdf.splitTextToSize(change.questionText, cardTextW);
+          pdf.text(qLines[0], cardTextX, y + 14);
+
+          // Arrow text — up to 2 lines
+          tc(NAV); ft(9, true);
+          arrowLines.slice(0, 2).forEach((line, li) => {
+            pdf.text(line, cardTextX, y + 28 + li * 13);
+          });
+
+          // New recommendation label + value on same line
+          const recRowY = y + 28 + arrowLineCount * 13 + 4;
+          tc(MUTED); ft(8);
+          pdf.text('New recommendation:', cardTextX, recRowY);
+          tc(AMBER); ft(9, true);
+          const labelOffset = cardTextX + pdf.getTextWidth('New recommendation: ');
+          const archMaxW = (PW - M - 16) - labelOffset;
+          const archLines: string[] = pdf.splitTextToSize(change.newRecommendation, archMaxW);
+          pdf.text(archLines[0], labelOffset, recRowY);
+
+          // Stats line
+          tc(MUTED); ft(8);
+          const statsText = `Fit ${change.newTopMatchPercentage}%  \u00B7  Certainty ${change.newConfidenceScore}%`;
+          const statsLines: string[] = pdf.splitTextToSize(statsText, cardTextW);
+          pdf.text(statsLines[0], cardTextX, recRowY + 14);
+
+          y += chH + 8;
         });
+      }
+
+      addFooter();
     }
 
     return pdf;
@@ -421,7 +761,7 @@ const Questionnaire: React.FC = () => {
 
   const getArchitectureImage = (architecture: string): string | null => {
     const images: Record<string, string> = {
-      'Kubernetes': '/images/kubernetes.svg',
+      'Azure AKS': '/images/azure-aks.png',
       'Azure App Services': '/images/azure-app-services.png',
       'Azure Container Apps': '/images/azure-container-apps.png',
       'Serverless': '/images/aws-lambda.png',
@@ -442,7 +782,7 @@ const Questionnaire: React.FC = () => {
 
   const getArchitectureIcon = (architecture: string) => {
     const icons: Record<string, string> = {
-      'Kubernetes': '🚢',
+      'Azure AKS': '☸️',
       'Azure App Services': '☁️',
       'Azure Container Apps': '📦',
       'Serverless': '⚡',

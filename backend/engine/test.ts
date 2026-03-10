@@ -33,10 +33,10 @@ function testRecommendationEngine() {
     });
 
     // Basic validation
-    if (result.recommendation !== 'Kubernetes') {
-      console.log('❌ Expected Kubernetes as top recommendation');
+    if (result.recommendation !== 'Azure AKS') {
+      console.log('❌ Expected Azure AKS as top recommendation');
     } else {
-      console.log('✅ Correctly recommended Kubernetes');
+      console.log('✅ Correctly recommended Azure AKS');
     }
 
     if (result.confidenceScore < 0 || result.confidenceScore > 100) {
