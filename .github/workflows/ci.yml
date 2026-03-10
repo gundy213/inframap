@@ -72,56 +72,31 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build backend image (context=repo root so shared/ is included)
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ./backend/Dockerfile
-          push: false
-          tags: |
-            infra-recommender-backend:${{ steps.app_version.outputs.version }}
-            infra-recommender-backend:latest
-          load: true
-
-      - name: Build frontend image
+      - name: Build combined image
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./frontend/Dockerfile
           push: false
           tags: |
-            infra-recommender-frontend:${{ steps.app_version.outputs.version }}
-            infra-recommender-frontend:latest
+            infra-recommender:${{ steps.app_version.outputs.version }}
+            infra-recommender:latest
           load: true
 
-      - name: Tag and push backend to Docker Hub (if credentials available)
+      - name: Tag and push to Docker Hub (if credentials available)
         if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         run: |
-          docker tag infra-recommender-backend:${{ steps.app_version.outputs.version }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:latest
-          docker tag infra-recommender-backend:${{ steps.app_version.outputs.version }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:${{ steps.app_version.outputs.version }}
-          docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:latest
-          docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:${{ steps.app_version.outputs.version }}
+          docker tag infra-recommender:${{ steps.app_version.outputs.version }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender:latest
+          docker tag infra-recommender:${{ steps.app_version.outputs.version }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender:${{ steps.app_version.outputs.version }}
+          docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender:latest
+          docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender:${{ steps.app_version.outputs.version }}
 
-      - name: Tag and push frontend to Docker Hub (if credentials available)
-        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+      - name: Save image as artifact
         run: |
-          docker tag infra-recommender-frontend:${{ steps.app_version.outputs.version }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:latest
-          docker tag infra-recommender-frontend:${{ steps.app_version.outputs.version }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:${{ steps.app_version.outputs.version }}
-          docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:latest
-          docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:${{ steps.app_version.outputs.version }}
+          docker save infra-recommender:${{ steps.app_version.outputs.version }} -o infra-recommender.tar
 
-      - name: Save backend image as artifact
-        run: |
-          docker save infra-recommender-backend:${{ steps.app_version.outputs.version }} -o backend-image.tar
-
-      - name: Save frontend image as artifact
-        run: |
-          docker save infra-recommender-frontend:${{ steps.app_version.outputs.version }} -o frontend-image.tar
-
-      - name: Upload images as artifacts
+      - name: Upload image as artifact
         uses: actions/upload-artifact@v4
         with:
           name: docker-images
-          path: |
-            backend-image.tar
-            frontend-image.tar
+          path: infra-recommender.tar
