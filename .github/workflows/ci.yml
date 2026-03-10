@@ -97,30 +97,26 @@ jobs:
       - name: Tag and push backend to Docker Hub (if credentials available)
         if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         run: |
-          docker tag infra-recommender-backend:${{ github.sha }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:latest
-          docker tag infra-recommender-backend:${{ github.sha }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:${{ steps.app_version.outputs.version }}
-          docker tag infra-recommender-backend:${{ github.sha }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:${{ github.sha }}
+          docker tag infra-recommender-backend:${{ steps.app_version.outputs.version }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:latest
+          docker tag infra-recommender-backend:${{ steps.app_version.outputs.version }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:${{ steps.app_version.outputs.version }}
           docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:latest
           docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:${{ steps.app_version.outputs.version }}
-          docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-backend:${{ github.sha }}
 
       - name: Tag and push frontend to Docker Hub (if credentials available)
         if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         run: |
-          docker tag infra-recommender-frontend:${{ github.sha }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:latest
-          docker tag infra-recommender-frontend:${{ github.sha }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:${{ steps.app_version.outputs.version }}
-          docker tag infra-recommender-frontend:${{ github.sha }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:${{ github.sha }}
+          docker tag infra-recommender-frontend:${{ steps.app_version.outputs.version }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:latest
+          docker tag infra-recommender-frontend:${{ steps.app_version.outputs.version }} ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:${{ steps.app_version.outputs.version }}
           docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:latest
           docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:${{ steps.app_version.outputs.version }}
-          docker push ${{ env.DOCKERHUB_USERNAME }}/infra-recommender-frontend:${{ github.sha }}
 
       - name: Save backend image as artifact
         run: |
-          docker save infra-recommender-backend:${{ github.sha }} -o backend-image.tar
+          docker save infra-recommender-backend:${{ steps.app_version.outputs.version }} -o backend-image.tar
 
       - name: Save frontend image as artifact
         run: |
-          docker save infra-recommender-frontend:${{ github.sha }} -o frontend-image.tar
+          docker save infra-recommender-frontend:${{ steps.app_version.outputs.version }} -o frontend-image.tar
 
       - name: Upload images as artifacts
         uses: actions/upload-artifact@v4
