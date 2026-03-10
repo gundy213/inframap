@@ -318,9 +318,7 @@ const Questionnaire: React.FC = () => {
     const pageHeader = (title: string) => {
       fc(BLUE); pdf.rect(0, 0, PW, 34, 'F');
       // Small logo mark
-      fc(WHITE); pdf.roundedRect(M, 7, 20, 20, 3, 3, 'F');
-      fc([37, 99, 235]); pdf.roundedRect(M + 2, 9, 16, 16, 2, 2, 'F');
-      tc(WHITE); ft(9, true); pdf.text('I', M + 6.5, 20);
+      drawLogo(M, 7, 20, 3, 2);
       // Section title
       ft(12, true); pdf.text(title, M + 28, 21);
       tc(NAV);
@@ -346,6 +344,32 @@ const Questionnaire: React.FC = () => {
     const confidenceColor = (level: string): RGB =>
       level === 'High' ? GREEN : level === 'Medium' ? AMBER : RED;
 
+    // Draws the favicon-matching logo mark: purple→blue gradient background + serif "I"
+    const drawLogo = (ox: number, oy: number, outerSize: number, outerR: number, innerInset: number) => {
+      const ix = ox + innerInset, iy = oy + innerInset;
+      const sz = outerSize - innerInset * 2;
+      const innerR = Math.max(2, Math.round(sz * 14 / 64));
+      // White outer frame
+      fc(WHITE); pdf.roundedRect(ox, oy, outerSize, outerSize, outerR, outerR, 'F');
+      // Gradient: purple #a855f7 (168,85,247) → blue #3b82f6 (59,130,235), left to right
+      const strips = Math.ceil(sz);
+      for (let i = 0; i < strips; i++) {
+        const t = strips > 1 ? i / (strips - 1) : 0;
+        fc([Math.round(168 - 109 * t), Math.round(85 + 45 * t), Math.round(247 - 12 * t)] as RGB);
+        pdf.rect(ix + i, iy, 1.5, sz, 'F');
+      }
+      // White serif "I": top bar / stem / bottom bar, proportional to favicon 64×64 viewBox
+      fc(WHITE);
+      const s = sz / 64;
+      const bh = Math.max(1, 4 * s), bw = 20 * s;
+      const stemW = 8 * s, stemH = 32 * s;
+      const barR = Math.min(bh / 2, innerR);
+      const stemR = Math.min(stemW / 2, innerR);
+      pdf.roundedRect(ix + 22 * s, iy + 16 * s, bw, bh, barR, barR, 'F');
+      pdf.roundedRect(ix + 28 * s, iy + 16 * s, stemW, stemH, stemR, stemR, 'F');
+      pdf.roundedRect(ix + 22 * s, iy + 44 * s, bw, bh, barR, barR, 'F');
+    };
+
     // ══════════════════════════════════════════════════════════════════════════
     // PAGE 1 — COVER
     // ══════════════════════════════════════════════════════════════════════════
@@ -354,10 +378,8 @@ const Questionnaire: React.FC = () => {
     fc(NAV); pdf.rect(0, 0, PW, 108, 'F');
     fc(BLUE); pdf.rect(0, 103, PW, 5, 'F');
 
-    // Logo mark — outer square, inner coloured square, "I"
-    fc(WHITE); pdf.roundedRect(M, 20, 42, 42, 6, 6, 'F');
-    fc(BLUE);  pdf.roundedRect(M + 4, 24, 34, 34, 4, 4, 'F');
-    tc(WHITE); ft(20, true); pdf.text('I', M + 12, 47);
+    // Logo mark — gradient icon matching favicon
+    drawLogo(M, 20, 42, 6, 4);
 
     // Brand name + subtitle
     ft(22, true); tc(WHITE);
