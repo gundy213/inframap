@@ -1,6 +1,6 @@
 {
   "name": "infra-recommender",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Infrastructure recommendation system with React frontend and Node.js backend",
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
