@@ -27,7 +27,7 @@ export class ScoringEngine {
    */
   calculateScores(responses: QuestionnaireResponse[]): ArchitectureScores {
     const initialScores: ArchitectureScores = {
-      Kubernetes: 0,
+      'Azure AKS': 0,
       'Azure App Services': 0,
       'Azure Container Apps': 0,
       Serverless: 0,
@@ -140,7 +140,7 @@ export const ScoringUtils = {
    */
   getArchitectureDescription(architecture: ArchitectureType): string {
     const descriptions: Record<ArchitectureType, string> = {
-      Kubernetes: 'Container orchestration platform ideal for complex, distributed applications with advanced scaling and management needs.',
+      'Azure AKS': 'Container orchestration platform ideal for complex, distributed applications with advanced scaling and management needs.',
       'Azure App Services': 'Fully managed platform for web applications and APIs, offering simplicity and quick deployment.',
       'Azure Container Apps': 'Serverless container service that provides a Kubernetes-like experience without managing infrastructure.',
       Serverless: 'Event-driven computing model where you pay only for execution time, perfect for variable workloads.',

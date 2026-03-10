@@ -380,11 +380,17 @@ const Questionnaire: React.FC = () => {
     fc(BLUE); pdf.roundedRect(cX, cY, 7, cH, 4, 4, 'F');
     pdf.rect(cX + 3, cY, 4, cH, 'F');
 
+    // Confidence panel x position — declared here so it can be used as max-width boundary below
+    const cpX = cX + cW - 136;
+
     tc(MUTED); ft(8, true);
     pdf.text('PRIMARY RECOMMENDATION', cX + 22, cY + 24);
 
     tc(NAV); ft(24, true);
-    pdf.text(scenarioResult.recommendation, cX + 22, cY + 56);
+    // Constrain to left content area (keep clear of confidence panel)
+    const recMaxW = cpX - (cX + 22) - 12;
+    const recLines: string[] = pdf.splitTextToSize(scenarioResult.recommendation, recMaxW);
+    pdf.text(recLines[0], cX + 22, cY + 56);
 
     // Fit score
     tc(MUTED); ft(8);
@@ -394,7 +400,6 @@ const Questionnaire: React.FC = () => {
     scoreBar(cX + 22, cY + 110, cW - 190, 9, scenarioResult.topMatchPercentage, BLUE);
 
     // Confidence panel (right side)
-    const cpX = cX + cW - 136;
     fc(CARD); pdf.roundedRect(cpX, cY + 64, 120, 96, 8, 8, 'F');
     tc(MUTED); ft(7, true);
     pdf.text('DECISION CERTAINTY', cpX + 10, cY + 80);
@@ -474,30 +479,36 @@ const Questionnaire: React.FC = () => {
       tc(WHITE); ft(14, true);
       pdf.text(`${idx + 2}`, M + 9, y + aH / 2 + 6);
 
-      // Name
-      tc(NAV); ft(11, true);
-      pdf.text(alt.architecture, M + 38, y + 20);
+      // Right metadata panel — fixed 152pt from right edge
+      const metaX = PW - M - 152;
+      const metaColW = 72;
+      tc(MUTED); ft(7, true);
+      pdf.text('COMPLEXITY', metaX + 4, y + 20);
+      pdf.text('EST. COST', metaX + metaColW + 4, y + 20);
+      tc(NAV); ft(10, true);
+      pdf.text(alt.complexity, metaX + 4, y + 33);
+      ft(9);
+      const costLines: string[] = pdf.splitTextToSize(alt.estimatedCost, metaColW - 4);
+      pdf.text(costLines[0], metaX + metaColW + 4, y + 33);
 
-      // Fit bar
+      // Name — clipped to left content area
+      tc(NAV); ft(11, true);
+      const nameMaxW = metaX - (M + 38) - 8;
+      const nameLines: string[] = pdf.splitTextToSize(alt.architecture, nameMaxW);
+      pdf.text(nameLines[0], M + 38, y + 20);
+
+      // Fit bar — stays within left content area, % label before metadata
+      const barW = metaX - (M + 38) - 48;
       tc(MUTED); ft(8);
       pdf.text('Fit Score', M + 38, y + 36);
-      scoreBar(M + 38, y + 40, PW - M * 2 - 168, 7, alt.percentage, rankC);
+      scoreBar(M + 38, y + 40, barW, 7, alt.percentage, rankC);
       tc(rankC); ft(10, true);
-      pdf.text(`${alt.percentage}%`, M + 38 + (PW - M * 2 - 168) + 8, y + 47);
+      pdf.text(`${alt.percentage}%`, M + 38 + barW + 6, y + 47);
 
-      // Meta right
-      const mX = PW - M - 130;
-      tc(MUTED); ft(7, true);
-      pdf.text('COMPLEXITY', mX, y + 20);
-      pdf.text('EST. COST', mX + 66, y + 20);
-      tc(NAV); ft(10, true);
-      pdf.text(alt.complexity, mX, y + 33);
-      ft(9); pdf.text(alt.estimatedCost, mX + 66, y + 33);
-
-      // First reason
+      // First reason — clipped to left content area
       if (alt.reasons.length > 0) {
         tc(MUTED); ft(8);
-        const rLine: string[] = pdf.splitTextToSize(alt.reasons[0], PW - M * 2 - 52);
+        const rLine: string[] = pdf.splitTextToSize(alt.reasons[0], nameMaxW);
         pdf.text(rLine[0], M + 38, y + 76);
       }
 
@@ -526,13 +537,16 @@ const Questionnaire: React.FC = () => {
       fc(BLUE); pdf.roundedRect(M + 8, y + 9, 18, 18, 3, 3, 'F');
       tc(WHITE); ft(8, true); pdf.text(`${idx + 1}`, M + 13, y + 21);
 
-      // Question
+      // Question — clip to available row width
       const q = sampleQuestions.find(qq => qq.id === response.questionId);
+      const rowTextW = PW - M * 2 - 44;
       tc(MUTED); ft(8);
-      pdf.text(q?.text ?? response.questionId, M + 34, y + 15);
+      const qLines: string[] = pdf.splitTextToSize(q?.text ?? response.questionId, rowTextW);
+      pdf.text(qLines[0], M + 34, y + 15);
       // Answer
       tc(NAV); ft(10, true);
-      pdf.text(answerText(response.questionId, response.selectedAnswerId), M + 34, y + 29);
+      const aLines: string[] = pdf.splitTextToSize(answerText(response.questionId, response.selectedAnswerId), rowTextW);
+      pdf.text(aLines[0], M + 34, y + 29);
 
       y += 38;
     });
@@ -551,9 +565,14 @@ const Questionnaire: React.FC = () => {
       const sW = (PW - M * 2 - 16) / 3;
       const statTile = (i: number, label: string, value: string, color: RGB) => {
         const sX = M + i * (sW + 8);
+        const tileLabelW = sW - 20; // conservative inner width
         fc(color); pdf.roundedRect(sX, y, sW, 60, 6, 6, 'F');
-        tc(WHITE); ft(20, true); pdf.text(value, sX + 14, y + 36);
-        ft(8); pdf.text(label, sX + 14, y + 51);
+        tc(WHITE); ft(20, true);
+        const valLines: string[] = pdf.splitTextToSize(value, tileLabelW);
+        pdf.text(valLines[0], sX + 10, y + 36);
+        ft(8);
+        const lblLines: string[] = pdf.splitTextToSize(label, tileLabelW);
+        pdf.text(lblLines[0], sX + 10, y + 51);
       };
       const stability = sensitivity.totalVariationsTested > 0
         ? Math.round((1 - sensitivity.recommendationSwitches / sensitivity.totalVariationsTested) * 100)
@@ -563,6 +582,10 @@ const Questionnaire: React.FC = () => {
       statTile(2, 'Recommendation Stability',     `${stability}%`, sensitivity.recommendationSwitches === 0 ? GREEN : INDIGO);
       y += 78;
 
+      // Safe inner text width for all cards — text starts at M+16, ends at PW-M-16
+      const cardTextX = M + 16;
+      const cardTextW = PW - M * 2 - 32;
+
       const switchChanges = sensitivity.changes.filter(c => c.changesRecommendation).slice(0, 6);
 
       if (switchChanges.length === 0) {
@@ -571,16 +594,27 @@ const Questionnaire: React.FC = () => {
         fc([52, 211, 153] as RGB); pdf.roundedRect(M, y, PW - M * 2, 6, 4, 4, 'F');
         pdf.rect(M, y + 3, PW - M * 2, 3, 'F');
         tc(WHITE); ft(13, true);
-        pdf.text('Recommendation is highly stable', M + 20, y + 30);
+        const bannerW = PW - M * 2 - 40;
+        const stableLines: string[] = pdf.splitTextToSize('Recommendation is highly stable', bannerW);
+        pdf.text(stableLines[0], M + 20, y + 30);
         ft(10);
-        pdf.text('No single answer change would alter the primary recommendation.', M + 20, y + 48);
+        const subLines: string[] = pdf.splitTextToSize('No single answer change would alter the primary recommendation.', bannerW);
+        pdf.text(subLines[0], M + 20, y + 48);
       } else {
         tc(NAV); ft(12, true);
-        pdf.text('Answers That Would Change the Recommendation', M, y); y += 5;
+        const headLines: string[] = pdf.splitTextToSize('Answers That Would Change the Recommendation', PW - M * 2);
+        pdf.text(headLines[0], M, y); y += 5;
         fc(AMBER); pdf.rect(M, y, 282, 2, 'F'); y += 14;
 
         switchChanges.forEach((change) => {
-          const chH = 66;
+          // Measure arrow text BEFORE drawing to get actual line count for dynamic card height
+          ft(9, true);
+          const arrowText = `"${change.currentAnswerText}"  ->  "${change.newAnswerText}"`;
+          const arrowLines: string[] = pdf.splitTextToSize(arrowText, cardTextW);
+          const arrowLineCount = Math.min(arrowLines.length, 2);
+          // Card height: 14 (question) + 14 (arrow lines × 13) + 16 (rec row) + 16 (stats) + top/bottom pads
+          const chH = 14 + (arrowLineCount * 13) + 16 + 16 + 18;
+
           if (y + chH > PH - 60) { addFooter(); pdf.addPage(); pageHeader('Sensitivity Analysis (cont.)'); y = 52; }
 
           fc(CARD); dc([253, 224, 71] as RGB); pdf.setLineWidth(0.8);
@@ -588,19 +622,32 @@ const Questionnaire: React.FC = () => {
           fc(AMBER); pdf.roundedRect(M, y, 6, chH, 3, 3, 'F');
           pdf.rect(M + 3, y, 3, chH, 'F');
 
-          tc(MUTED); ft(8); pdf.text(change.questionText, M + 14, y + 14);
-          tc(NAV); ft(9, true);
-          pdf.text(`"${change.currentAnswerText}"  \u2192  "${change.newAnswerText}"`, M + 14, y + 28);
-
-          tc(MUTED); ft(8); pdf.text('New recommendation:', M + 14, y + 48);
-          tc(AMBER); ft(9, true);
-          const archLabel = change.newRecommendation;
-          pdf.text(archLabel, M + 108, y + 48);
+          // Question label — 1 line, clipped
           tc(MUTED); ft(8);
-          pdf.text(
-            `(Fit ${change.newTopMatchPercentage}%  \u00B7  Certainty ${change.newConfidenceScore}%)`,
-            M + 110 + pdf.getTextWidth(archLabel), y + 48
-          );
+          const qLines: string[] = pdf.splitTextToSize(change.questionText, cardTextW);
+          pdf.text(qLines[0], cardTextX, y + 14);
+
+          // Arrow text — up to 2 lines
+          tc(NAV); ft(9, true);
+          arrowLines.slice(0, 2).forEach((line, li) => {
+            pdf.text(line, cardTextX, y + 28 + li * 13);
+          });
+
+          // New recommendation label + value on same line
+          const recRowY = y + 28 + arrowLineCount * 13 + 4;
+          tc(MUTED); ft(8);
+          pdf.text('New recommendation:', cardTextX, recRowY);
+          tc(AMBER); ft(9, true);
+          const labelOffset = cardTextX + pdf.getTextWidth('New recommendation: ');
+          const archMaxW = (PW - M - 16) - labelOffset;
+          const archLines: string[] = pdf.splitTextToSize(change.newRecommendation, archMaxW);
+          pdf.text(archLines[0], labelOffset, recRowY);
+
+          // Stats line
+          tc(MUTED); ft(8);
+          const statsText = `Fit ${change.newTopMatchPercentage}%  \u00B7  Certainty ${change.newConfidenceScore}%`;
+          const statsLines: string[] = pdf.splitTextToSize(statsText, cardTextW);
+          pdf.text(statsLines[0], cardTextX, recRowY + 14);
 
           y += chH + 8;
         });
@@ -692,7 +739,7 @@ const Questionnaire: React.FC = () => {
 
   const getArchitectureImage = (architecture: string): string | null => {
     const images: Record<string, string> = {
-      'Kubernetes': '/images/kubernetes.svg',
+      'Azure AKS': '/images/azure-aks.png',
       'Azure App Services': '/images/azure-app-services.png',
       'Azure Container Apps': '/images/azure-container-apps.png',
       'Serverless': '/images/aws-lambda.png',
@@ -713,7 +760,7 @@ const Questionnaire: React.FC = () => {
 
   const getArchitectureIcon = (architecture: string) => {
     const icons: Record<string, string> = {
-      'Kubernetes': '🚢',
+      'Azure AKS': '☸️',
       'Azure App Services': '☁️',
       'Azure Container Apps': '📦',
       'Serverless': '⚡',

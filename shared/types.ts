@@ -1,6 +1,6 @@
 // Architecture types for infrastructure recommendations
 export type ArchitectureType =
-  | 'Kubernetes'
+  | 'Azure AKS'
   | 'Azure App Services'
   | 'Azure Container Apps'
   | 'Serverless'
@@ -20,7 +20,7 @@ export type ArchitectureType =
 
 // Scoring weights for each architecture type
 export interface ArchitectureScores {
-  Kubernetes: number;
+  'Azure AKS': number;
   'Azure App Services': number;
   'Azure Container Apps': number;
   Serverless: number;
