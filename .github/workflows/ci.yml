@@ -79,7 +79,6 @@ jobs:
           file: ./backend/Dockerfile
           push: false
           tags: |
-            infra-recommender-backend:${{ github.sha }}
             infra-recommender-backend:${{ steps.app_version.outputs.version }}
             infra-recommender-backend:latest
           load: true
@@ -91,7 +90,6 @@ jobs:
           file: ./frontend/Dockerfile
           push: false
           tags: |
-            infra-recommender-frontend:${{ github.sha }}
             infra-recommender-frontend:${{ steps.app_version.outputs.version }}
             infra-recommender-frontend:latest
           load: true
