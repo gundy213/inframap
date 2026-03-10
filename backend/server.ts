@@ -3,7 +3,8 @@ import cors from 'cors';
 import { recommend, getQuestions, sensitivityAnalysis } from './routes/recommend';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+// Use BACKEND_PORT to avoid collision with Cloud Run's PORT=8080 (which belongs to nginx)
+const PORT = process.env.BACKEND_PORT || 3001;
 
 // Middleware
 app.use(cors());
