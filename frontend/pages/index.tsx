@@ -382,7 +382,7 @@ const Questionnaire: React.FC = () => {
     setIsAnalyzingSensitivity(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/recommend', {
+      const response = await fetch('/api/recommend', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -397,7 +397,7 @@ const Questionnaire: React.FC = () => {
       const result = await response.json();
       setResult(result);
 
-      const sensitivityResponse = await fetch('http://localhost:3001/api/recommend/sensitivity', {
+      const sensitivityResponse = await fetch('/api/recommend/sensitivity', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
